@@ -1,8 +1,10 @@
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:dynamic_color/dynamic_color.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'dart:io' show Platform;
 import 'package:post_ace/utils/theme.dart';
 import 'screens/selection_screen.dart';
-import './firebase_option.dart';
 import 'package:provider/provider.dart';
 import 'utils/theme_provider.dart';
 
@@ -20,15 +22,69 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
+  static late int sdkInt;
+  static late String manufacturer;
+
+  static Future<bool> checkSdkVersion() async {
+    if (Platform.isAndroid) {
+      var androidInfo = await DeviceInfoPlugin().androidInfo;
+      sdkInt = androidInfo.version.sdkInt;
+      manufacturer = androidInfo.manufacturer;
+      return sdkInt <= 31 && !manufacturer.toLowerCase().contains('xiaomi');
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'College Updates',
-      debugShowCheckedModeBanner: false,
-      themeMode: context.watch<ThemeProvider>().themeMode,
-      theme: lightMode,
-      darkTheme: darkMode,
-      home: const SelectionScreen(),
+    Future<void> initSdk() async {
+      await checkSdkVersion();
+    }
+
+    initSdk();
+
+    return DynamicColorBuilder(
+      builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
+        final themeProvider = context.watch<ThemeProvider>();
+        final useDynamicColor = Platform.isAndroid &&
+            themeProvider.useDynamicColor &&
+            sdkInt >= 31 &&
+            !manufacturer.toLowerCase().contains('xiaomi');
+
+        // Log whether dynamic colors are available
+        debugPrint(
+          'Dynamic colors available: lightDynamic = $lightDynamic, darkDynamic = $darkDynamic',
+        );
+
+        // Modify dynamic light scheme if available
+        ColorScheme lightScheme = useDynamicColor && lightDynamic != null
+            ? lightDynamic.harmonized().copyWith(
+                  // Override specific colors in dynamic scheme
+                  shadow: Colors.black.withValues(alpha: 0.1),
+                )
+            : lightColorScheme;
+
+        ColorScheme darkScheme = useDynamicColor && darkDynamic != null
+            ? darkDynamic.harmonized()
+            : darkColorScheme;
+
+        return MaterialApp(
+          title: 'College Updates',
+          debugShowCheckedModeBanner: false,
+          themeMode: themeProvider.themeMode,
+          theme: ThemeData(
+            useMaterial3: true,
+            colorScheme: lightScheme,
+            // Add other theme properties
+          ),
+          darkTheme: ThemeData(
+            useMaterial3: true,
+            colorScheme: darkScheme,
+            // Add other theme properties
+          ),
+          home: const SelectionScreen(),
+        );
+      },
     );
   }
 }

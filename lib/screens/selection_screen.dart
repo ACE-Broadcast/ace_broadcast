@@ -15,15 +15,15 @@ class SelectionScreen extends StatefulWidget {
 class _SelectionScreenState extends State<SelectionScreen> {
   @override
   Widget build(BuildContext context) {
-      final theme = Theme.of(context);
+    final theme = Theme.of(context);
 
     return Scaffold(
       body: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column( 
-              mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
             // Student Section
             InkWell(
               onTap: () {
@@ -39,12 +39,14 @@ class _SelectionScreenState extends State<SelectionScreen> {
                 decoration: BoxDecoration(
                   color: theme.colorScheme.surfaceDim,
                   borderRadius: BorderRadius.circular(18.0),
-                  boxShadow: [
-                    BoxShadow(
-                      blurRadius: 20,
-                      color: theme.colorScheme.shadow,
-                    )
-                  ],
+                  boxShadow: Theme.of(context).brightness == Brightness.light
+                      ? [
+                          BoxShadow(
+                            blurRadius: 20,
+                            color: theme.colorScheme.shadow,
+                          )
+                        ]
+                      : null,
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -68,7 +70,9 @@ class _SelectionScreenState extends State<SelectionScreen> {
                           ),
                           SvgPicture.asset(
                             'assets/icons/right_arrow.svg',
-                            colorFilter: ColorFilter.mode(theme.colorScheme.inversePrimary, BlendMode.srcIn),
+                            colorFilter: ColorFilter.mode(
+                                theme.colorScheme.inversePrimary,
+                                BlendMode.srcIn),
                             height: 30,
                           ),
                         ]),
@@ -76,9 +80,11 @@ class _SelectionScreenState extends State<SelectionScreen> {
                 ),
               ),
             ),
-            
-            const SizedBox(height: 20,),
-            
+
+            const SizedBox(
+              height: 20,
+            ),
+
             //Admin Login
             InkWell(
               onTap: () {
@@ -94,12 +100,14 @@ class _SelectionScreenState extends State<SelectionScreen> {
                 decoration: BoxDecoration(
                   color: theme.colorScheme.surfaceDim,
                   borderRadius: BorderRadius.circular(18.0),
-                  boxShadow: [
-                    BoxShadow(
-                      blurRadius: 20,
-                      color: theme.colorScheme.shadow,
-                    )
-                  ],
+                  boxShadow: Theme.of(context).brightness == Brightness.light
+                      ? [
+                          BoxShadow(
+                            blurRadius: 20,
+                            color: theme.colorScheme.shadow,
+                          )
+                        ]
+                      : null,
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -123,17 +131,19 @@ class _SelectionScreenState extends State<SelectionScreen> {
                           ),
                           SvgPicture.asset(
                             'assets/icons/right_arrow.svg',
-                            colorFilter: ColorFilter.mode(theme.colorScheme.inversePrimary, BlendMode.srcIn),
+                            colorFilter: ColorFilter.mode(
+                                theme.colorScheme.inversePrimary,
+                                BlendMode.srcIn),
                             height: 30,
-                          ),  
+                          ),
                         ]),
                   ],
                 ),
               ),
             )
-                    ],
-                  ),
-          )),
+          ],
+        ),
+      )),
     );
   }
 }
