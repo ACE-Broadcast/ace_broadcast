@@ -39,7 +39,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
             fontWeight: FontWeight.bold,
           ),
           child: Text('Notifications',
-              style: TextStyle(color: theme.colorScheme.inversePrimary)),
+              style: TextStyle(color: theme.colorScheme.primary)),
         ),
       ),
       // TODO: Implement StreamBuilder for real-time notifications

@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
 
-class ThemeProvider extends ChangeNotifier{
-  ThemeMode themeMode = ThemeMode.system;
+class ThemeProvider with ChangeNotifier {
+  bool _useDynamicColor = false;
+  ThemeMode _themeMode = ThemeMode.system;
 
-  ThemeMode get getThemeMode => themeMode;
+  bool get useDynamicColor => _useDynamicColor;
+  ThemeMode get themeMode => _themeMode;
 
-  void setThemeMode(ThemeMode mode){
-    themeMode = mode;
+  void toggleDynamicColor() {
+    _useDynamicColor = !_useDynamicColor;
+    notifyListeners();
+  }
+
+  void setThemeMode(ThemeMode mode) {
+    _themeMode = mode;
     notifyListeners();
   }
 }

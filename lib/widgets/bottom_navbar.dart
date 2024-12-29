@@ -29,38 +29,43 @@ class _CustomBottomNavState extends State<CustomBottomNav> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isLightMode = Theme.of(context).brightness == Brightness.light;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(15, 0, 15, 25),
       child: Material(
         elevation: 2,
+        borderRadius: BorderRadius.circular(20),
         child: Container(
           height: 65,
           decoration: BoxDecoration(
             color: theme.colorScheme.surfaceContainer,
             borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                blurRadius: 20,
-                color: Theme.of(context).brightness == Brightness.light
-                    ? theme.colorScheme.shadow.withValues(alpha: .15)
-                    : Colors.transparent,
-              )
-            ],
+            boxShadow: isLightMode
+                ? [
+                    BoxShadow(
+                      blurRadius: 20,
+                      color: theme.colorScheme.shadow,
+                    )
+                  ]
+                : null,
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
             child: GNav(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              rippleColor: theme.colorScheme.primary.withAlpha(25),
-              hoverColor: theme.colorScheme.primary.withAlpha(15),
+              rippleColor: theme.colorScheme.primary.withValues(alpha: 0.1),
               gap: 8,
               activeColor: theme.colorScheme.primary,
               iconSize: 22,
               padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
               duration: const Duration(milliseconds: 400),
-              tabBackgroundColor: theme.colorScheme.surfaceTint,
-              color: theme.colorScheme.onSurface,
+              tabBackgroundColor: theme.colorScheme.secondaryContainer,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+              textStyle: TextStyle(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w500,
+              ),
               haptic: true,
               tabs: [
                 GButton(
@@ -68,7 +73,7 @@ class _CustomBottomNavState extends State<CustomBottomNav> {
                   text: 'Home',
                   leading: SvgPicture.asset(
                     'assets/icons/home.svg',
-                    height: 22,
+                    height: 27,
                     colorFilter: ColorFilter.mode(
                       widget.selectedIndex == 0
                           ? theme.colorScheme.primary
@@ -82,7 +87,7 @@ class _CustomBottomNavState extends State<CustomBottomNav> {
                   text: 'Notifications',
                   leading: SvgPicture.asset(
                     'assets/icons/bell.svg',
-                    height: 22,
+                    height: 24,
                     colorFilter: ColorFilter.mode(
                       widget.selectedIndex == 1
                           ? theme.colorScheme.primary

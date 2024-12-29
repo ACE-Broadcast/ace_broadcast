@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:post_ace/utils/theme_provider.dart';
 import 'package:provider/provider.dart';
+import 'dart:io' show Platform;
 
 class ThemeSelection extends StatefulWidget {
   const ThemeSelection({super.key});
@@ -22,7 +23,7 @@ class _ThemeSelectionState extends State<ThemeSelection> {
       appBar: AppBar(
         title: Text('Theme',
             style: TextStyle(
-                color: theme.colorScheme.inversePrimary,
+                color: theme.colorScheme.primary,
                 fontWeight: FontWeight.bold,
                 fontSize: 25)),
       ),
@@ -55,6 +56,15 @@ class _ThemeSelectionState extends State<ThemeSelection> {
                 },
               ),
             ),
+            const SizedBox(height: 20),
+            if (Platform.isAndroid) ...[
+              SwitchListTile(
+                title: const Text('Material Theme'),
+                subtitle: const Text('Use wallpaper colors'),
+                value: themeProvider.useDynamicColor,
+                onChanged: (_) => themeProvider.toggleDynamicColor(),
+              ),
+            ],
           ],
         ),
       ),
