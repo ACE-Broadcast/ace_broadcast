@@ -118,8 +118,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   fontSize: _titleSize,
                   fontWeight: FontWeight.bold,
                 ),
-                child:
-                   Text('Home', style: TextStyle(color: theme.colorScheme.inversePrimary)),
+                child: Text(
+                  'Home',
+                  style: TextStyle(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
             ),
             body: Column(
@@ -132,13 +137,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(50),
-                        boxShadow: [
-                          BoxShadow(
-                            color: theme.colorScheme.shadow,
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
+                        boxShadow:
+                            Theme.of(context).brightness == Brightness.light
+                                ? [
+                                    BoxShadow(
+                                      color: theme.colorScheme.shadow,
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                : null,
                       ),
                       child: TextField(
                         textAlignVertical: TextAlignVertical.center,
@@ -146,12 +154,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         decoration: InputDecoration(
                           hintText: 'Search posts...',
                           hintStyle: TextStyle(
-                            color: theme.colorScheme.inversePrimary.withValues(alpha: 0.5),
+                            color: theme.colorScheme.inversePrimary
+                                .withValues(alpha: 0.8),
                             fontSize: 16,
                           ),
                           prefixIcon: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Icon(Icons.search, color: theme.colorScheme.inversePrimary),
+                            child: Icon(Icons.search,
+                                color: theme.colorScheme.inversePrimary),
                           ),
                           prefixIconConstraints: const BoxConstraints(
                             minWidth: 48,
@@ -161,15 +171,21 @@ class _HomeScreenState extends State<HomeScreen> {
                           fillColor: theme.colorScheme.surfaceDim,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(50),
-                            borderSide: BorderSide(color: theme.colorScheme.inversePrimary.withValues(alpha: .2)),
+                            borderSide: BorderSide(
+                                color: theme.colorScheme.inversePrimary
+                                    .withValues(alpha: .2)),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(50),
-                            borderSide:  BorderSide(color: theme.colorScheme.inversePrimary.withValues(alpha: .2)),
+                            borderSide: BorderSide(
+                                color: theme.colorScheme.inversePrimary
+                                    .withValues(alpha: .4)),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(50),
-                            borderSide: BorderSide(color: theme.colorScheme.primary.withValues(alpha: .5)),
+                            borderSide: BorderSide(
+                                color: theme.colorScheme.primary
+                                    .withValues(alpha: .4)),
                           ),
                           isDense: false,
                           contentPadding: const EdgeInsets.symmetric(
@@ -276,6 +292,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showCreatePostDialog(BuildContext context) {
+    final theme = Theme.of(context);
     Future<void> postMessage() async {
       try {
         final response = await http.post(
@@ -352,8 +369,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ElevatedButton(
               onPressed: postMessage,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF6C63FF),
-                foregroundColor: Colors.white,
+                backgroundColor: theme.colorScheme.primary,
+                foregroundColor: theme.colorScheme.inversePrimary,
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
               child: const Text('Post'),

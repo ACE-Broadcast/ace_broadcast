@@ -62,7 +62,7 @@ class _PostWidgetState extends State<PostWidget> {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(15),
-        side: BorderSide(color: Colors.grey.shade300),
+        side: BorderSide(color: theme.colorScheme.outline, width: 0.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -164,7 +164,8 @@ class _PostWidgetState extends State<PostWidget> {
                 ),
 
                 //Like Counter
-                Text(widget.likesCount.toString(), style: const TextStyle(color: Colors.grey)),
+                Text(widget.likesCount.toString(),
+                    style: const TextStyle(color: Colors.grey)),
 
                 const SizedBox(
                   width: 8,
