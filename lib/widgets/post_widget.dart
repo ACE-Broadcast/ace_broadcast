@@ -15,6 +15,7 @@ class PostWidget extends StatefulWidget {
   final Function()? onComment;
   final Function()? onShare;
   final Function()? onSave;
+  final bool isLiked;
 
   const PostWidget({
     super.key,
@@ -30,6 +31,7 @@ class PostWidget extends StatefulWidget {
     this.onComment,
     this.onShare,
     this.onSave,
+    this.isLiked = false,
   });
 
   @override

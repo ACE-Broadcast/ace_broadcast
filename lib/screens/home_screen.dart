@@ -70,7 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _fetchMessages() async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.0.159:5000/api/post/getMsg'),
+        Uri.parse('http://192.168.2.106:5000/api/post/getMsg'),
       );
 
       if (response.statusCode == 200) {
@@ -91,6 +91,47 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     } catch (e) {
       debugPrint('Error fetching messages: $e');
+    }
+  }
+
+  Future<int> _fetchLikesCount(String postId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('http://192.168.2.106:5000/api/like/posts/$postId/likes'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['likesCount'] ?? 0;
+      }
+    } catch (e) {
+      debugPrint('Error fetching likes count: $e');
+    }
+    return 0;
+  }
+
+  Future<void> _postLike(String postId) async {
+    try {
+      final response = await http.post(
+        Uri.parse('http://192.168.2.106:5000/api/like/postLike'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          "email": widget.userName, 
+          "postId": postId,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        // Refresh likes count after successful like
+        final newCount = await _fetchLikesCount(postId);
+        setState(() {
+          final post = messages.firstWhere((post) => post.id == postId);
+          post.likesCount = newCount;
+          post.isLiked = true; 
+        });
+      }
+    } catch (e) {
+      debugPrint('Error posting like: $e');
     }
   }
 
@@ -188,6 +229,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     itemCount: messages.length,
                     itemBuilder: (context, index) {
                       final post = messages[index];
+                      
+                      _fetchLikesCount(post.id).then((count) {
+                        if (mounted) {
+                          setState(() {
+                            post.likesCount = count;
+                          });
+                        }
+                      });
+
                       return InkWell(
                         onTap: () {
                           // Navigator.push(
@@ -202,12 +252,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           timeAgo: post.getFormattedTimestamp(),
                           content: post.message,
                           imageUrls: const [],
-                          likesCount: 41,
-                          likes: const [], //Userid of ppl of liked
+                          likesCount: post.likesCount, 
+                          likes: const [],
                           commentsCount: 21,
                           isSaved: post.username == widget.userName,
-                          onLike: () {
-                            // TODO: Implement Firebase like functionality
+                          onLike: () async {
+                            await _postLike(post.id);
                           },
                           // onComment: () {
                           //   Navigator.push(
@@ -224,6 +274,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           onSave: () {
                             // TODO: Implement Firebase save functionality
                           },
+                          isLiked: post.isLiked,
                         ),
                       );
                     },
@@ -280,7 +331,7 @@ class _HomeScreenState extends State<HomeScreen> {
       try {
         final response = await http.post(
           Uri.parse(
-              'http://192.168.0.159:5000/api/post/postMsg'), // Replace with your API endpoint
+              'http://192.168.2.106:5000/api/post/postMsg'),
           headers: {'Content-Type': 'application/json'},
           body: json.encode({
             "Username": widget.userName,
@@ -370,22 +421,91 @@ class Message {
   final String username;
   final String message;
   final DateTime timestamp;
+  final String id;
+  int likesCount;
+  bool isLiked;
 
-  Message(
-      {required this.username, required this.message, required this.timestamp});
+  Message({
+    required this.username, 
+    required this.message,
+    required this.timestamp,
+    required this.id,
+    this.likesCount = 0,
+    this.isLiked = false, 
+
+  });
 
   factory Message.fromJson(Map<String, dynamic> json) {
     print('Raw JSON: $json');
     return Message(
+      id: json['_id'] ?? '',
       username: json['username'] ?? '',
       message: json['message'] ?? '',
       timestamp: DateTime.parse(
         json['timestamp'] ?? 'Just Now',
       ),
+      likesCount: 0,
     );
   }
+
   String getFormattedTimestamp() {
     final formatter = DateFormat('MMM dd, yyyy hh:mm a');
     return formatter.format(timestamp);
   }
 }
+
+// class LikeButton extends StatefulWidget {
+//   final bool isLiked;
+//   final VoidCallback onTap;
+
+//   const LikeButton({
+//     Key? key,
+//     required this.isLiked,
+//     required this.onTap,
+//   }) : super(key: key);
+
+//   @override
+//   _LikeButtonState createState() => _LikeButtonState();
+// }
+
+// class _LikeButtonState extends State<LikeButton> with SingleTickerProviderStateMixin {
+//   late AnimationController _controller;
+//   late Animation<double> _scaleAnimation;
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     _controller = AnimationController(
+//       duration: const Duration(milliseconds: 200),
+//       vsync: this,
+//     );
+//     _scaleAnimation = Tween<double>(begin: 1, end: 1.2).animate(
+//       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+//     );
+//   }
+
+//   @override
+//   void dispose() {
+//     _controller.dispose();
+//     super.dispose();
+//   }
+
+//   void _onTap() async {
+//     _controller.forward().then((_) => _controller.reverse());
+//     widget.onTap();
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return ScaleTransition(
+//       scale: _scaleAnimation,
+//       child: IconButton(
+//         icon: Icon(
+//           widget.isLiked ? Icons.favorite : Icons.favorite_border,
+//           color: widget.isLiked ? Colors.red : Colors.grey,
+//         ),
+//         onPressed: _onTap,
+//       ),
+//     );
+//   }
+// }
