@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:post_ace/screens/theme_selection.dart';
+import 'package:post_ace/screens/selection_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 
 class ProfilePage extends StatefulWidget {
   final bool isAdmin;
@@ -22,6 +26,8 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   bool isEditing = false;
   bool isEditingSkills = false;
+  File? _profileImage;
+  final ImagePicker _picker = ImagePicker();
 
   static const Map<String, String> _defaultValues = {
     'Email': 'xyz@example.com',
@@ -62,10 +68,23 @@ class _ProfilePageState extends State<ProfilePage> {
     });
   }
 
-  void _handleSkillsEdit() {
-    setState(() {
-      isEditingSkills = !isEditingSkills;
-    });
+  Future<void> _pickImage() async {
+    try {
+      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+      if (image != null) {
+        setState(() {
+          _profileImage = File(image.path);
+        });
+        // TODO: Upload image to storage and update user profile
+        // 1. Upload image to Firebase Storage
+        // 2. Get download URL
+        // 3. Update user profile with new image URL
+        // 4. Save URL to SharedPreferences for offline access
+      }
+    } catch (e) {
+      // TODO: Handle error - show snackbar or toast
+      print('Error picking image: $e');
+    }
   }
 
   @override
@@ -118,10 +137,16 @@ class _ProfilePageState extends State<ProfilePage> {
                     alignment: Alignment.topCenter,
                     child: Stack(
                       children: [
-                        const CircleAvatar(
+                        CircleAvatar(
                           radius: 60,
-                          backgroundImage: AssetImage(
-                              'assets/icons/avatar.avif'), // TODO: Change this to the actual profile image
+                          backgroundColor: Colors.grey[300],
+                          backgroundImage: _profileImage != null
+                              ? FileImage(_profileImage!)
+                              : null,
+                          child: _profileImage == null
+                              ? const Icon(Icons.person,
+                                  size: 60, color: Colors.grey)
+                              : null,
                         ),
                         if (isEditing)
                           Positioned(
@@ -134,9 +159,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               child: IconButton(
                                 icon: const Icon(Icons.camera_alt, size: 18),
                                 color: Colors.white,
-                                onPressed: () {
-                                  // TODO: Add image upload logic
-                                },
+                                onPressed: _pickImage,
                               ),
                             ),
                           ),
@@ -179,50 +202,12 @@ class _ProfilePageState extends State<ProfilePage> {
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              IconButton(
-                                icon: Icon(
-                                    isEditingSkills ? Icons.check : Icons.edit),
-                                onPressed: _handleSkillsEdit,
-                              ),
                             ],
                           ),
                           const Divider(height: 25),
                           _buildInfoRow('Email', 'xyz@example.com'),
                           const SizedBox(height: 12),
                           _buildInfoRow('Branch', 'Computer Engineering'),
-                          const SizedBox(height: 12),
-                          // Special handling for Skills
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Skills',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              if (isEditingSkills)
-                                TextField(
-                                  controller: _controllers['Skills'],
-                                  maxLines: null,
-                                  decoration: InputDecoration(
-                                    contentPadding: const EdgeInsets.all(12),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    isDense: true,
-                                  ),
-                                  style: const TextStyle(fontSize: 16),
-                                )
-                              else
-                                Text(
-                                  _controllers['Skills']?.text ?? '',
-                                  style: const TextStyle(fontSize: 16),
-                                ),
-                            ],
-                          ),
                         ],
                       ),
                     ),
@@ -257,15 +242,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           // TODO: Handle My Posts
                         },
                       ),
-                      const SizedBox(height: 12),
-                      _buildPostButton(
-                        icon: Icons.request_page,
-                        label: 'Requests',
-                        onPressed: () {
-                          // TODO: Handle Requests
-                        },
-                      ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       _buildPostButton(
                         icon: Icons.bookmark,
                         label: 'Saved Posts',
@@ -273,7 +250,6 @@ class _ProfilePageState extends State<ProfilePage> {
                           // TODO: Handle Saved Posts
                         },
                       ),
-                      const SizedBox(height: 12),
                     ],
                   ),
                 ),
@@ -334,15 +310,27 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
-                      // TODO: sign out logic
+                    onPressed: () async {
+                      // Clear stored credentials
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.clear(); // This removes all stored data
+
+                      if (mounted) {
+                        // Navigate to selection screen and remove all previous routes
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(
+                            builder: (context) => const SelectionScreen(),
+                          ),
+                          (route) => false, // This removes all previous routes
+                        );
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 15),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(30),
                       ),
                     ),
                     child: const Text(

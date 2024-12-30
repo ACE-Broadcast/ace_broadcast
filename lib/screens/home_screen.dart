@@ -280,7 +280,7 @@ class _HomeScreenState extends State<HomeScreen> {
       try {
         final response = await http.post(
           Uri.parse(
-              'http://192.168.2.106:5000/api/post/postMsg'), // Replace with your API endpoint
+              'http://192.168.0.159:5000/api/post/postMsg'), // Replace with your API endpoint
           headers: {'Content-Type': 'application/json'},
           body: json.encode({
             "Username": widget.userName,
