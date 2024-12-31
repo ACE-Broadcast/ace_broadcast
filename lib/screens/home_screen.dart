@@ -461,19 +461,19 @@ class _HomeScreenState extends State<HomeScreen> {
                             borderRadius: BorderRadius.circular(50),
                             borderSide: BorderSide(
                                 color: theme.colorScheme.inversePrimary
-                                    .withValues(alpha: .2)),
+                                    .withValues(alpha: .5)),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(50),
                             borderSide: BorderSide(
                                 color: theme.colorScheme.inversePrimary
-                                    .withValues(alpha: .4)),
+                                    .withValues(alpha: .5)),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(50),
                             borderSide: BorderSide(
                                 color: theme.colorScheme.primary
-                                    .withValues(alpha: .4)),
+                                    .withValues(alpha: .5)),
                           ),
                           isDense: false,
                           contentPadding: const EdgeInsets.symmetric(

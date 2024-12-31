@@ -57,10 +57,13 @@ class _ThemeSelectionState extends State<ThemeSelection> {
               ),
             ),
             const SizedBox(height: 20),
+
+            // Material Switch
             if (Platform.isAndroid) ...[
               SwitchListTile(
                 title: const Text('Material Theme'),
-                subtitle: const Text('Use wallpaper colors'),
+                subtitle: const Text(
+                    'Use wallpaper colors. \nOnly supports Android 12 and above.'),
                 value: themeProvider.useDynamicColor,
                 onChanged: (_) => themeProvider.toggleDynamicColor(),
               ),
