@@ -8,7 +8,7 @@ final lightColorScheme = ColorScheme.light(
   onSecondary: Colors.white,
   onSurface: Colors.black,
   surfaceTint: const Color(0xFF6C63FF).withValues(alpha: 0.1),
-  shadow: Colors.black.withValues(alpha: 0.1),
+  shadow: Colors.black.withValues(alpha: 0.2),
   inversePrimary: const Color(0xFF2B2930),
   surfaceDim: const Color(0xFFF7F7F7),
   surfaceContainer: const Color(0xFFF3F2FF),

@@ -126,7 +126,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             fontSize: 16,
                             color: Theme.of(context)
                                 .colorScheme
-                                .inversePrimary
+                                .primary
                                 .withAlpha(153),
                           ),
                         ),
