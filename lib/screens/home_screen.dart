@@ -84,9 +84,8 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           messages = messagesData
               .map((json) => Message.fromJson(json))
-              .toList()
-              .reversed
               .toList();
+
         });
       } else {
         debugPrint('Error Status Code: ${response.statusCode}');
@@ -106,6 +105,22 @@ class _HomeScreenState extends State<HomeScreen> {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return data['likesCount'] ?? 0;
+      }
+    } catch (e) {
+      debugPrint('Error fetching likes count: $e');
+    }
+    return 0;
+  }
+
+  Future<int> _fetchCommentCount(String postId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('http://192.168.2.106:5000/api/comment/$postId'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['count'] ?? 0;
       }
     } catch (e) {
       debugPrint('Error fetching likes count: $e');
@@ -159,44 +174,33 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_messageController.text.trim().isEmpty) return;
 
     try {
-      var uri = Uri.parse('http://192.168.2.106:5000/api/posts');
-      var request = http.MultipartRequest('POST', uri);
-
-      // Add text fields
-      request.fields['Username'] = widget.userName;
-      request.fields['Message'] = _messageController.text.trim();
-
-      // Add files if selected
-      // if (_selectedFiles != null) {
-      //   for (var file in _selectedFiles!) {
-      //     if (file.path != null) {
-      //       request.files.add(await http.MultipartFile.fromPath(
-      //         'files',
-      //         file.path!,
-      //       ));
-      //     }
-      //   }
-      // }
-
-      final response = await request.send();
-
-      if (response.statusCode == 201) {
+      final response = await http.post(
+        Uri.parse(
+            'http://192.168.2.106:5000/api/post/postMsg'), // Replace with your API endpoint
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          "Username": widget.userName,
+          'Message': _messageController.text,
+        }),
+      );
+      final responseData = json.decode(response.body);
+      if (responseData['success'] == true) {
         if (mounted) {
+          setState(() {
+            _fetchMessages();
+          });
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Post created successfully!')),
+            const SnackBar(content: Text('Message posted successfully!')),
           );
           _messageController.clear();
-          setState(() {
-            _selectedFiles = null;
-          });
         }
       } else {
-        throw Exception('Failed to create post');
+        throw Exception('Failed to post message');
       }
     } catch (e) {
-      if (mounted) {
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error creating post: $e')),
+          SnackBar(content: Text('Error: ${e.toString()}')),
         );
       }
     }
@@ -313,6 +317,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         }
                       });
 
+                      _fetchCommentCount(post.id).then((count) {
+                        if (mounted) {
+                          setState(() {
+                            post.commentsCount = count;
+                          });
+                        }
+                      });
+
                       return InkWell(
                         onTap: () {
                           Navigator.push(
@@ -322,11 +334,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                 post: Post(
                                     id: post.id,
                                     adminName: post.username,
-                                    timeAgo: post.getFormattedTimestamp(),
+                                    timeAgo: _formatTimestamp(post.timestamp.toString()),
                                     content: post.message,
                                     imageUrls: const [],
                                     likesCount: post.likesCount,
-                                    commentsCount: 21,
+                                    commentsCount: post.commentsCount,
                                     isSaved: post.username == widget.userName),
                               ),
                             ),
@@ -334,12 +346,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         },
                         child: PostWidget(
                           adminName: post.username,
-                          timeAgo: post.getFormattedTimestamp(),
+                          timeAgo: _formatTimestamp(post.timestamp.toString()),
                           content: post.message,
                           imageUrls: const [],
                           likesCount: post.likesCount,
                           likes: const [],
-                          commentsCount: 21,
+                          commentsCount: post.commentsCount,
                           isSaved: post.username == widget.userName,
                           onLike: () async {
                             await _postLike(post.id);
@@ -411,6 +423,22 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  String _formatTimestamp(String timestamp) {
+    final dateTime = DateTime.parse(timestamp);
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inDays > 0) {
+      return '${difference.inDays}d ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes}m ago';
+    } else {
+      return 'Just now';
+    }
+  }
+
   void _showCreatePostDialog(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -477,6 +505,7 @@ class Message {
   final DateTime timestamp;
   final String id;
   int likesCount;
+  int commentsCount;
   bool isLiked;
 
   Message({
@@ -485,6 +514,7 @@ class Message {
     required this.timestamp,
     required this.id,
     this.likesCount = 0,
+    this.commentsCount = 0,
     this.isLiked = false,
   });
 
