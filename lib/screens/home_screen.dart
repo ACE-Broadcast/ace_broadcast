@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:post_ace/models/post.dart';
 import 'package:post_ace/screens/profile_page.dart';
 import '../widgets/post_widget.dart';
 import '../data/posts_data.dart';
@@ -9,6 +10,7 @@ import '../widgets/scroll_behavior.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:post_ace/widgets/bottom_navbar.dart';
+import 'package:file_picker/file_picker.dart';
 
 class HomeScreen extends StatefulWidget {
   final bool isAdmin;
@@ -32,6 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
   double _titleSize = 30;
   int _selectedIndex = 0;
   final PageController _pageController = PageController();
+  List<PlatformFile>? _selectedFiles;
 
   List<Message> messages = [];
 
@@ -116,7 +119,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Uri.parse('http://192.168.2.106:5000/api/like/postLike'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
-          "email": widget.userName, 
+          "email": widget.userName,
           "postId": postId,
         }),
       );
@@ -127,11 +130,75 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           final post = messages.firstWhere((post) => post.id == postId);
           post.likesCount = newCount;
-          post.isLiked = true; 
+          post.isLiked = true;
         });
       }
     } catch (e) {
       debugPrint('Error posting like: $e');
+    }
+  }
+
+  Future<void> pickFiles() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: true,
+      );
+
+      if (result != null) {
+        setState(() {
+          _selectedFiles = result.files;
+        });
+      }
+    } catch (e) {
+      print('Error picking files: $e');
+    }
+  }
+
+  Future<void> postMessage() async {
+    if (_messageController.text.trim().isEmpty) return;
+
+    try {
+      var uri = Uri.parse('http://192.168.2.106:5000/api/posts');
+      var request = http.MultipartRequest('POST', uri);
+
+      // Add text fields
+      request.fields['Username'] = widget.userName;
+      request.fields['Message'] = _messageController.text.trim();
+
+      // Add files if selected
+      // if (_selectedFiles != null) {
+      //   for (var file in _selectedFiles!) {
+      //     if (file.path != null) {
+      //       request.files.add(await http.MultipartFile.fromPath(
+      //         'files',
+      //         file.path!,
+      //       ));
+      //     }
+      //   }
+      // }
+
+      final response = await request.send();
+
+      if (response.statusCode == 201) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Post created successfully!')),
+          );
+          _messageController.clear();
+          setState(() {
+            _selectedFiles = null;
+          });
+        }
+      } else {
+        throw Exception('Failed to create post');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error creating post: $e')),
+        );
+      }
     }
   }
 
@@ -159,8 +226,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   fontSize: _titleSize,
                   fontWeight: FontWeight.bold,
                 ),
-                child:
-                   Text('Home', style: TextStyle(color: theme.colorScheme.inversePrimary)),
+                child: Text('Home',
+                    style: TextStyle(color: theme.colorScheme.inversePrimary)),
               ),
             ),
             body: Column(
@@ -187,12 +254,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         decoration: InputDecoration(
                           hintText: 'Search posts...',
                           hintStyle: TextStyle(
-                            color: theme.colorScheme.inversePrimary.withValues(alpha: 0.5),
+                            color: theme.colorScheme.inversePrimary
+                                .withValues(alpha: 0.5),
                             fontSize: 16,
                           ),
                           prefixIcon: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Icon(Icons.search, color: theme.colorScheme.inversePrimary),
+                            child: Icon(Icons.search,
+                                color: theme.colorScheme.inversePrimary),
                           ),
                           prefixIconConstraints: const BoxConstraints(
                             minWidth: 48,
@@ -202,15 +271,21 @@ class _HomeScreenState extends State<HomeScreen> {
                           fillColor: theme.colorScheme.surfaceDim,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(50),
-                            borderSide: BorderSide(color: theme.colorScheme.inversePrimary.withValues(alpha: .2)),
+                            borderSide: BorderSide(
+                                color: theme.colorScheme.inversePrimary
+                                    .withValues(alpha: .2)),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(50),
-                            borderSide:  BorderSide(color: theme.colorScheme.inversePrimary.withValues(alpha: .2)),
+                            borderSide: BorderSide(
+                                color: theme.colorScheme.inversePrimary
+                                    .withValues(alpha: .2)),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(50),
-                            borderSide: BorderSide(color: theme.colorScheme.primary.withValues(alpha: .5)),
+                            borderSide: BorderSide(
+                                color: theme.colorScheme.primary
+                                    .withValues(alpha: .5)),
                           ),
                           isDense: false,
                           contentPadding: const EdgeInsets.symmetric(
@@ -229,7 +304,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     itemCount: messages.length,
                     itemBuilder: (context, index) {
                       final post = messages[index];
-                      
+
                       _fetchLikesCount(post.id).then((count) {
                         if (mounted) {
                           setState(() {
@@ -240,19 +315,29 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       return InkWell(
                         onTap: () {
-                          // Navigator.push(
-                          //   context,
-                          //   MaterialPageRoute(
-                          //     builder: (context) => CommentsScreen(post: post),
-                          //   ),
-                          // );
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => CommentsScreen(
+                                post: Post(
+                                    id: post.id,
+                                    adminName: post.username,
+                                    timeAgo: post.getFormattedTimestamp(),
+                                    content: post.message,
+                                    imageUrls: const [],
+                                    likesCount: post.likesCount,
+                                    commentsCount: 21,
+                                    isSaved: post.username == widget.userName),
+                              ),
+                            ),
+                          );
                         },
                         child: PostWidget(
                           adminName: post.username,
                           timeAgo: post.getFormattedTimestamp(),
                           content: post.message,
                           imageUrls: const [],
-                          likesCount: post.likesCount, 
+                          likesCount: post.likesCount,
                           likes: const [],
                           commentsCount: 21,
                           isSaved: post.username == widget.userName,
@@ -327,37 +412,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showCreatePostDialog(BuildContext context) {
-    Future<void> postMessage() async {
-      try {
-        final response = await http.post(
-          Uri.parse(
-              'http://192.168.2.106:5000/api/post/postMsg'),
-          headers: {'Content-Type': 'application/json'},
-          body: json.encode({
-            "Username": widget.userName,
-            'Message': _messageController.text,
-          }),
-        );
-
-        if (response.statusCode == 201) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Message posted successfully!')),
-            );
-            Navigator.pop(context);
-          }
-        } else {
-          throw Exception('Failed to post message');
-        }
-      } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: ${e.toString()}')),
-          );
-        }
-      }
-    }
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -393,11 +447,11 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
-              onPressed: () {
-                // TODO: Implement image picker
-              },
+              onPressed: pickFiles,
               icon: const Icon(Icons.image),
-              label: const Text('Add Images'),
+              label: Text((_selectedFiles?.length ?? 0) > 0
+                  ? '${_selectedFiles!.length} files selected'
+                  : 'Add Images'),
             ),
             const SizedBox(height: 16),
             ElevatedButton(
@@ -426,13 +480,12 @@ class Message {
   bool isLiked;
 
   Message({
-    required this.username, 
+    required this.username,
     required this.message,
     required this.timestamp,
     required this.id,
     this.likesCount = 0,
-    this.isLiked = false, 
-
+    this.isLiked = false,
   });
 
   factory Message.fromJson(Map<String, dynamic> json) {

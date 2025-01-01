@@ -1,4 +1,5 @@
 class Post {
+  final String id;
   final String adminName;
   final String timeAgo;
   final String content;
@@ -12,6 +13,7 @@ class Post {
     required this.timeAgo,
     required this.content,
     this.imageUrls,
+    required this.id,
     this.likesCount = 0,
     this.commentsCount = 0,
     this.isSaved = false,
