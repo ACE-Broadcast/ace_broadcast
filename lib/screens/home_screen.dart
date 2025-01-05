@@ -48,8 +48,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
-    _scrollController.dispose();
     _messageController.dispose();
+    _scrollController.dispose();
     _pageController.dispose();
     super.dispose();
   }
@@ -71,28 +71,29 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _fetchMessages() async {
+    if (!mounted) return;
+    
     try {
       final response = await http.get(
         Uri.parse('http://192.168.2.106:5000/api/post/getMsg'),
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 && mounted) {
         final data = json.decode(response.body);
-        debugPrint('API Response: $data');
         final List<dynamic> messagesData = data['data'] ?? [];
-        debugPrint('Messages Data: $messagesData');
         setState(() {
           messages = messagesData
               .map((json) => Message.fromJson(json))
               .toList();
-
         });
-      } else {
-        debugPrint('Error Status Code: ${response.statusCode}');
-        debugPrint('Error Response: ${response.body}');
       }
     } catch (e) {
       debugPrint('Error fetching messages: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load messages: $e')),
+        );
+      }
     }
   }
 
@@ -171,36 +172,49 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> postMessage() async {
-    if (_messageController.text.trim().isEmpty) return;
+    if (!mounted || _messageController.text.trim().isEmpty) return;
 
     try {
-      final response = await http.post(
-        Uri.parse(
-            'http://192.168.2.106:5000/api/post/postMsg'), // Replace with your API endpoint
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          "Username": widget.userName,
-          'Message': _messageController.text,
-        }),
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('http://192.168.2.106:5000/api/post/postMsg'),
       );
-      final responseData = json.decode(response.body);
-      if (responseData['success'] == true) {
-        if (mounted) {
-          setState(() {
-            _fetchMessages();
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Message posted successfully!')),
-          );
-          _messageController.clear();
+
+      request.fields['Username'] = widget.userName;
+      request.fields['Message'] = _messageController.text;
+
+      if (_selectedFiles != null && _selectedFiles!.isNotEmpty) {
+        for (var file in _selectedFiles!) {
+          if (file.path != null) {
+            request.files.add(
+              await http.MultipartFile.fromPath(
+                'images',
+                file.path!,
+              ),
+            );
+          }
         }
-      } else {
-        throw Exception('Failed to post message');
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200 && mounted) {
+        _messageController.clear();
+        setState(() {
+          _selectedFiles = null;
+        });
+        if (mounted) {
+        await _fetchMessages();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Post created successfully!')),
+        );
+      }
       }
     } catch (e) {
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
+          SnackBar(content: Text('Error: $e')),
         );
       }
     }
@@ -336,7 +350,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     adminName: post.username,
                                     timeAgo: _formatTimestamp(post.timestamp.toString()),
                                     content: post.message,
-                                    imageUrls: const [],
+                                    imageUrls: post.imageUrls.isEmpty ? [] : post.imageUrls,
                                     likesCount: post.likesCount,
                                     commentsCount: post.commentsCount,
                                     isSaved: post.username == widget.userName),
@@ -348,7 +362,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           adminName: post.username,
                           timeAgo: _formatTimestamp(post.timestamp.toString()),
                           content: post.message,
-                          imageUrls: const [],
+                          imageUrls: post.imageUrls.isEmpty ? [] : post.imageUrls,
                           likesCount: post.likesCount,
                           likes: const [],
                           commentsCount: post.commentsCount,
@@ -504,6 +518,7 @@ class Message {
   final String message;
   final DateTime timestamp;
   final String id;
+  final List<String> imageUrls;
   int likesCount;
   int commentsCount;
   bool isLiked;
@@ -513,6 +528,7 @@ class Message {
     required this.message,
     required this.timestamp,
     required this.id,
+    this.imageUrls = const [],
     this.likesCount = 0,
     this.commentsCount = 0,
     this.isLiked = false,
@@ -520,12 +536,24 @@ class Message {
 
   factory Message.fromJson(Map<String, dynamic> json) {
     print('Raw JSON: $json');
+    
+    List<String> extractImageUrls(dynamic imagesData) {
+      if (imagesData is List) {
+        return imagesData
+            .map((image) => image['url'] as String? ?? '')
+            .where((url) => url.isNotEmpty)
+            .toList();
+      }
+      return [];
+    }
+  
     return Message(
       id: json['_id'] ?? '',
       username: json['username'] ?? '',
       message: json['message'] ?? '',
+      imageUrls: extractImageUrls(json['images']),
       timestamp: DateTime.parse(
-        json['timestamp'] ?? 'Just Now',
+        json['timestamp'] ?? DateTime.now().toIso8601String(),
       ),
       likesCount: 0,
     );
