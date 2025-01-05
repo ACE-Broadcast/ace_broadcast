@@ -37,7 +37,7 @@ class Message {
   int likesCount;
   int commentsCount;
   bool isLiked;
-  List<String> userLikes; 
+  List<String> userLikes;
 
   Message({
     required this.username,
@@ -53,7 +53,7 @@ class Message {
 
   factory Message.fromJson(Map<String, dynamic> json) {
     print('Raw JSON: $json');
-    
+
     List<String> extractImageUrls(dynamic imagesData) {
       if (imagesData is List) {
         return imagesData
@@ -64,13 +64,13 @@ class Message {
       return [];
     }
 
-     List<String> extractUserLikes(dynamic likesData) {
+    List<String> extractUserLikes(dynamic likesData) {
       if (likesData is List) {
         return likesData.map((like) => like.toString()).toList();
       }
       return [];
     }
-  
+
     return Message(
       id: json['_id'] ?? '',
       username: json['username'] ?? '',
@@ -98,7 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   final PageController _pageController = PageController();
   List<PlatformFile>? _selectedFiles;
-  Set<String> userLikedPosts = {};  
+  Set<String> userLikedPosts = {};
 
   List<Message> messages = [];
 
@@ -107,9 +107,9 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _messageController = TextEditingController();
     _scrollController.addListener(_onScroll);
-    
+
     _fetchMessages().then((_) {
-      _fetchUserLikes(); 
+      _fetchUserLikes();
     });
   }
 
@@ -133,25 +133,24 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _onNavigationChanged(int index) {
     setState(() {
-      _selectedIndex = index; 
+      _selectedIndex = index;
     });
   }
 
   Future<void> _fetchMessages() async {
     if (!mounted) return;
-    
+
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.2.106:5000/api/post/getMsg'),
+        Uri.parse('http://192.168.0.159:5000/api/post/getMsg'),
       );
 
       if (response.statusCode == 200 && mounted) {
         final data = json.decode(response.body);
         final List<dynamic> messagesData = data['data'] ?? [];
         setState(() {
-          messages = messagesData
-              .map((json) => Message.fromJson(json))
-              .toList();
+          messages =
+              messagesData.map((json) => Message.fromJson(json)).toList();
         });
       }
     } catch (e) {
@@ -167,20 +166,23 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _fetchUserLikes() async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.2.106:5000/api/like/user-likes/${widget.userName}'),
+        Uri.parse(
+            'http://192.168.0.159:5000/api/like/user-likes/${widget.userName}'),
       );
 
       if (response.statusCode == 200 && mounted) {
         final data = json.decode(response.body);
-        
+
         // Check if email matches current user
         if (data['email'] == widget.userName) {
           // Extract liked post IDs
-          final likedPosts = (data['likedPosts'] as List).map((post) => post['_id'] as String).toSet();
-          
+          final likedPosts = (data['likedPosts'] as List)
+              .map((post) => post['_id'] as String)
+              .toSet();
+
           setState(() {
             userLikedPosts = likedPosts;
-            
+
             for (var message in messages) {
               message.isLiked = userLikedPosts.contains(message.id);
             }
@@ -195,7 +197,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<int> _fetchLikesCount(String postId) async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.2.106:5000/api/like/posts/$postId/likes'),
+        Uri.parse('http://192.168.0.159:5000/api/like/posts/$postId/likes'),
       );
 
       if (response.statusCode == 200) {
@@ -211,7 +213,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<int> _fetchCommentCount(String postId) async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.2.106:5000/api/comment/$postId'),
+        Uri.parse('http://192.168.0.159:5000/api/comment/$postId'),
       );
 
       if (response.statusCode == 200) {
@@ -224,47 +226,44 @@ class _HomeScreenState extends State<HomeScreen> {
     return 0;
   }
 
-  
-
   Future<void> _postLike(String postId) async {
-  try {
-    final postIndex = messages.indexWhere((post) => post.id == postId);
-    if (postIndex == -1) return;
+    try {
+      final postIndex = messages.indexWhere((post) => post.id == postId);
+      if (postIndex == -1) return;
 
-    // Toggle like state locally
-    // setState(() {
-    //   messages[postIndex].isLiked = !messages[postIndex].isLiked;
-    //   // messages[postIndex].likesCount += messages[postIndex].isLiked ? 1 : -1;
-    // });
+      // Toggle like state locally
+      // setState(() {
+      //   messages[postIndex].isLiked = !messages[postIndex].isLiked;
+      //   // messages[postIndex].likesCount += messages[postIndex].isLiked ? 1 : -1;
+      // });
 
-    // Make API call
-    final response = await http.post(
-      Uri.parse('http://192.168.2.106:5000/api/like/postLike'),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({
-        "email": widget.userName,
-        "postId": postId,
-      }),
-    );
+      // Make API call
+      final response = await http.post(
+        Uri.parse('http://192.168.0.159:5000/api/like/postLike'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          "email": widget.userName,
+          "postId": postId,
+        }),
+      );
 
-    if (response.statusCode == 200 && mounted) {
-
-      final newCount = await _fetchLikesCount(postId);
+      if (response.statusCode == 200 && mounted) {
+        final newCount = await _fetchLikesCount(postId);
+        if (mounted) {
+          setState(() {
+            messages[postIndex].isLiked = !messages[postIndex].isLiked;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error in _postLike: $e');
       if (mounted) {
-        setState(() {
-          messages[postIndex].isLiked = !messages[postIndex].isLiked;
-        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update like: $e')),
+        );
       }
     }
-  } catch (e) {
-    print('Error in _postLike: $e');
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update like: $e')),
-      );
-    }
   }
-}
 
   Future<void> pickFiles() async {
     try {
@@ -289,7 +288,7 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('http://192.168.2.106:5000/api/post/postMsg'),
+        Uri.parse('http://192.168.0.159:5000/api/post/postMsg'),
       );
 
       request.fields['Username'] = widget.userName;
@@ -317,11 +316,11 @@ class _HomeScreenState extends State<HomeScreen> {
           _selectedFiles = null;
         });
         if (mounted) {
-        await _fetchMessages();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Post created successfully!')),
-        );
-      }
+          await _fetchMessages();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Post created successfully!')),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -335,13 +334,15 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _checkUserLikes() async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.2.106:5000/api/like/user-likes/${widget.userName}'),
+        Uri.parse(
+            'http://192.168.0.159:5000/api/like/user-likes/${widget.userName}'),
       );
 
       if (response.statusCode == 200 && mounted) {
         final data = json.decode(response.body);
-        final List<String> userLikedPosts = List<String>.from(data['likedPosts'] ?? []);
-        
+        final List<String> userLikedPosts =
+            List<String>.from(data['likedPosts'] ?? []);
+
         setState(() {
           for (var message in messages) {
             message.isLiked = userLikedPosts.contains(message.id);
@@ -463,7 +464,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           });
                         }
                       });
- 
+
                       _fetchCommentCount(post.id).then((count) {
                         if (mounted) {
                           setState(() {
@@ -481,15 +482,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                 post: Post(
                                     id: post.id,
                                     adminName: post.username,
-                                    timeAgo: _formatTimestamp(post.timestamp.toString()),
+                                    timeAgo: _formatTimestamp(
+                                        post.timestamp.toString()),
                                     content: post.message,
-                                    imageUrls: post.imageUrls.isEmpty ? [] : post.imageUrls,
+                                    imageUrls: post.imageUrls.isEmpty
+                                        ? []
+                                        : post.imageUrls,
                                     likesCount: post.likesCount,
                                     commentsCount: post.commentsCount,
-                                    
                                     isSaved: post.username == widget.userName),
-                                    
-                                    
                               ),
                             ),
                           );
@@ -498,7 +499,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           adminName: post.username,
                           timeAgo: _formatTimestamp(post.timestamp.toString()),
                           content: post.message,
-                          imageUrls: post.imageUrls.isEmpty ? [] : post.imageUrls,
+                          imageUrls:
+                              post.imageUrls.isEmpty ? [] : post.imageUrls,
                           likesCount: post.likesCount,
                           likes: const [],
                           commentsCount: post.commentsCount,
@@ -649,8 +651,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-
-
 
 // class LikeButton extends StatefulWidget {
 //   final bool isLiked;
