@@ -10,12 +10,13 @@ class PostWidget extends StatefulWidget {
   final int likesCount;
   final int commentsCount;
   final bool isSaved;
+  final bool isLiked;
   final List<String>? likes; //list of email ids/userid who have liked the post
   final Function()? onLike;
   final Function()? onComment;
   final Function()? onShare;
   final Function()? onSave;
-  final bool isLiked;
+  
 
   const PostWidget({
     super.key,
@@ -157,7 +158,10 @@ class _PostWidgetState extends State<PostWidget> {
                 ),
 
                 //Like Button
-                LikeButton(isLiked: true, onTap: () {}),
+                LikeButton(
+                  isLiked: widget.isLiked,
+                  onTap: widget.onLike,
+                ),
                 // TODO Implement the dynamic like button
                 // LikeButton(isLiked: widget.isLiked, onTap: toggleLike),
 

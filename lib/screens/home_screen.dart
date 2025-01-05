@@ -28,6 +28,69 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+class Message {
+  final String username;
+  final String message;
+  final DateTime timestamp;
+  final String id;
+  final List<String> imageUrls;
+  int likesCount;
+  int commentsCount;
+  bool isLiked;
+  List<String> userLikes; 
+
+  Message({
+    required this.username,
+    required this.message,
+    required this.timestamp,
+    required this.id,
+    this.imageUrls = const [],
+    this.likesCount = 0,
+    this.commentsCount = 0,
+    this.isLiked = false,
+    this.userLikes = const [],
+  });
+
+  factory Message.fromJson(Map<String, dynamic> json) {
+    print('Raw JSON: $json');
+    
+    List<String> extractImageUrls(dynamic imagesData) {
+      if (imagesData is List) {
+        return imagesData
+            .map((image) => image['url'] as String? ?? '')
+            .where((url) => url.isNotEmpty)
+            .toList();
+      }
+      return [];
+    }
+
+     List<String> extractUserLikes(dynamic likesData) {
+      if (likesData is List) {
+        return likesData.map((like) => like.toString()).toList();
+      }
+      return [];
+    }
+  
+    return Message(
+      id: json['_id'] ?? '',
+      username: json['username'] ?? '',
+      message: json['message'] ?? '',
+      imageUrls: extractImageUrls(json['images']),
+      timestamp: DateTime.parse(
+        json['timestamp'] ?? DateTime.now().toIso8601String(),
+      ),
+      likesCount: json['likesCount'] ?? 0,
+      userLikes: extractUserLikes(json['_id'] ?? []),
+      isLiked: false, // Will be updated after fetching user likes
+    );
+  }
+
+  String getFormattedTimestamp() {
+    final formatter = DateFormat('MMM dd, yyyy hh:mm a');
+    return formatter.format(timestamp);
+  }
+}
+
 class _HomeScreenState extends State<HomeScreen> {
   final ScrollController _scrollController = ScrollController();
   TextEditingController _messageController = TextEditingController();
@@ -35,6 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   final PageController _pageController = PageController();
   List<PlatformFile>? _selectedFiles;
+  Set<String> userLikedPosts = {};  
 
   List<Message> messages = [];
 
@@ -42,8 +106,11 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _messageController = TextEditingController();
-    _fetchMessages();
     _scrollController.addListener(_onScroll);
+    
+    _fetchMessages().then((_) {
+      _fetchUserLikes(); 
+    });
   }
 
   @override
@@ -66,7 +133,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _onNavigationChanged(int index) {
     setState(() {
-      _selectedIndex = index; // Update the selected index
+      _selectedIndex = index; 
     });
   }
 
@@ -94,6 +161,34 @@ class _HomeScreenState extends State<HomeScreen> {
           SnackBar(content: Text('Failed to load messages: $e')),
         );
       }
+    }
+  }
+
+  Future<void> _fetchUserLikes() async {
+    try {
+      final response = await http.get(
+        Uri.parse('http://192.168.2.106:5000/api/like/user-likes/${widget.userName}'),
+      );
+
+      if (response.statusCode == 200 && mounted) {
+        final data = json.decode(response.body);
+        
+        // Check if email matches current user
+        if (data['email'] == widget.userName) {
+          // Extract liked post IDs
+          final likedPosts = (data['likedPosts'] as List).map((post) => post['_id'] as String).toSet();
+          
+          setState(() {
+            userLikedPosts = likedPosts;
+            
+            for (var message in messages) {
+              message.isLiked = userLikedPosts.contains(message.id);
+            }
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching user likes: $e');
     }
   }
 
@@ -129,30 +224,47 @@ class _HomeScreenState extends State<HomeScreen> {
     return 0;
   }
 
-  Future<void> _postLike(String postId) async {
-    try {
-      final response = await http.post(
-        Uri.parse('http://192.168.2.106:5000/api/like/postLike'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          "email": widget.userName,
-          "postId": postId,
-        }),
-      );
+  
 
-      if (response.statusCode == 201) {
-        // Refresh likes count after successful like
-        final newCount = await _fetchLikesCount(postId);
+  Future<void> _postLike(String postId) async {
+  try {
+    final postIndex = messages.indexWhere((post) => post.id == postId);
+    if (postIndex == -1) return;
+
+    // Toggle like state locally
+    // setState(() {
+    //   messages[postIndex].isLiked = !messages[postIndex].isLiked;
+    //   // messages[postIndex].likesCount += messages[postIndex].isLiked ? 1 : -1;
+    // });
+
+    // Make API call
+    final response = await http.post(
+      Uri.parse('http://192.168.2.106:5000/api/like/postLike'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({
+        "email": widget.userName,
+        "postId": postId,
+      }),
+    );
+
+    if (response.statusCode == 200 && mounted) {
+
+      final newCount = await _fetchLikesCount(postId);
+      if (mounted) {
         setState(() {
-          final post = messages.firstWhere((post) => post.id == postId);
-          post.likesCount = newCount;
-          post.isLiked = true;
+          messages[postIndex].isLiked = !messages[postIndex].isLiked;
         });
       }
-    } catch (e) {
-      debugPrint('Error posting like: $e');
+    }
+  } catch (e) {
+    print('Error in _postLike: $e');
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update like: $e')),
+      );
     }
   }
+}
 
   Future<void> pickFiles() async {
     try {
@@ -217,6 +329,27 @@ class _HomeScreenState extends State<HomeScreen> {
           SnackBar(content: Text('Error: $e')),
         );
       }
+    }
+  }
+
+  Future<void> _checkUserLikes() async {
+    try {
+      final response = await http.get(
+        Uri.parse('http://192.168.2.106:5000/api/like/user-likes/${widget.userName}'),
+      );
+
+      if (response.statusCode == 200 && mounted) {
+        final data = json.decode(response.body);
+        final List<String> userLikedPosts = List<String>.from(data['likedPosts'] ?? []);
+        
+        setState(() {
+          for (var message in messages) {
+            message.isLiked = userLikedPosts.contains(message.id);
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error checking user likes: $e');
     }
   }
 
@@ -330,7 +463,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           });
                         }
                       });
-
+ 
                       _fetchCommentCount(post.id).then((count) {
                         if (mounted) {
                           setState(() {
@@ -353,7 +486,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                     imageUrls: post.imageUrls.isEmpty ? [] : post.imageUrls,
                                     likesCount: post.likesCount,
                                     commentsCount: post.commentsCount,
+                                    
                                     isSaved: post.username == widget.userName),
+                                    
+                                    
                               ),
                             ),
                           );
@@ -366,6 +502,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           likesCount: post.likesCount,
                           likes: const [],
                           commentsCount: post.commentsCount,
+                          isLiked: post.isLiked,
                           isSaved: post.username == widget.userName,
                           onLike: () async {
                             await _postLike(post.id);
@@ -385,7 +522,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           onSave: () {
                             // TODO: Implement Firebase save functionality
                           },
-                          isLiked: post.isLiked,
+                          // isLiked: post.isLiked,
                         ),
                       );
                     },
@@ -513,57 +650,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class Message {
-  final String username;
-  final String message;
-  final DateTime timestamp;
-  final String id;
-  final List<String> imageUrls;
-  int likesCount;
-  int commentsCount;
-  bool isLiked;
 
-  Message({
-    required this.username,
-    required this.message,
-    required this.timestamp,
-    required this.id,
-    this.imageUrls = const [],
-    this.likesCount = 0,
-    this.commentsCount = 0,
-    this.isLiked = false,
-  });
-
-  factory Message.fromJson(Map<String, dynamic> json) {
-    print('Raw JSON: $json');
-    
-    List<String> extractImageUrls(dynamic imagesData) {
-      if (imagesData is List) {
-        return imagesData
-            .map((image) => image['url'] as String? ?? '')
-            .where((url) => url.isNotEmpty)
-            .toList();
-      }
-      return [];
-    }
-  
-    return Message(
-      id: json['_id'] ?? '',
-      username: json['username'] ?? '',
-      message: json['message'] ?? '',
-      imageUrls: extractImageUrls(json['images']),
-      timestamp: DateTime.parse(
-        json['timestamp'] ?? DateTime.now().toIso8601String(),
-      ),
-      likesCount: 0,
-    );
-  }
-
-  String getFormattedTimestamp() {
-    final formatter = DateFormat('MMM dd, yyyy hh:mm a');
-    return formatter.format(timestamp);
-  }
-}
 
 // class LikeButton extends StatefulWidget {
 //   final bool isLiked;

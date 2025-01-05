@@ -140,6 +140,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
             likesCount: widget.post.likesCount,
             commentsCount: widget.post.commentsCount,
             isSaved: widget.post.isSaved,
+            onLike: widget.post.onLike,
           ),
           Expanded(
             child: FutureBuilder<List<Comment>>(
