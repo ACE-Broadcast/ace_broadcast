@@ -3,6 +3,7 @@ import 'package:lottie/lottie.dart';
 import 'package:post_ace/utils/theme_provider.dart';
 import 'package:provider/provider.dart';
 import 'dart:io' show Platform;
+import 'package:post_ace/main.dart';
 
 class ThemeSelection extends StatefulWidget {
   const ThemeSelection({super.key});
@@ -18,6 +19,10 @@ class _ThemeSelectionState extends State<ThemeSelection> {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final theme = Theme.of(context);
+
+    final canUseDynamicColor = Platform.isAndroid &&
+        MyApp.sdkInt >= 31 &&
+        !MyApp.manufacturer.toLowerCase().contains('xiaomi');
 
     return Scaffold(
       appBar: AppBar(
@@ -59,7 +64,7 @@ class _ThemeSelectionState extends State<ThemeSelection> {
             const SizedBox(height: 20),
 
             // Material Switch
-            if (Platform.isAndroid) ...[
+            if (canUseDynamicColor) ...[
               SwitchListTile(
                 title: const Text('Material Theme'),
                 subtitle: const Text(
