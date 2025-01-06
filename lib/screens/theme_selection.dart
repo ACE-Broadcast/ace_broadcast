@@ -66,9 +66,14 @@ class _ThemeSelectionState extends State<ThemeSelection> {
             // Material Switch
             if (canUseDynamicColor) ...[
               SwitchListTile(
-                title: const Text('Material Theme'),
+                title: const Text(
+                  'Material Theme',
+                  style: TextStyle(fontSize: 20),
+                ),
                 subtitle: const Text(
-                    'Use wallpaper colors. \nOnly supports Android 12 and above.'),
+                  'Use wallpaper colors. \nOnly supports Android 12 and above.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
                 value: themeProvider.useDynamicColor,
                 onChanged: (_) => themeProvider.toggleDynamicColor(),
               ),

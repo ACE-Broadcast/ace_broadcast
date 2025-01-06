@@ -70,12 +70,22 @@ class MyApp extends StatelessWidget {
           theme: ThemeData(
             useMaterial3: true,
             colorScheme: lightScheme,
-            // Add other theme properties
+            fontFamily: 'ProductSans',
+            textTheme: const TextTheme(
+              bodyLarge: TextStyle(fontFamily: 'Lato'),
+              bodyMedium: TextStyle(fontFamily: 'Lato'),
+              bodySmall: TextStyle(fontFamily: 'Lato'),
+            ),
           ),
           darkTheme: ThemeData(
             useMaterial3: true,
             colorScheme: darkScheme,
-            // Add other theme properties
+            fontFamily: 'ProductSans',
+            textTheme: const TextTheme(
+              bodyLarge: TextStyle(fontFamily: 'Lato'),
+              bodyMedium: TextStyle(fontFamily: 'Lato'),
+              bodySmall: TextStyle(fontFamily: 'Lato'),
+            ),
           ),
           home: const SelectionScreen(),
         );
