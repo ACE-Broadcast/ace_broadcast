@@ -108,8 +108,17 @@ class _HomeScreenState extends State<HomeScreen> {
     _messageController = TextEditingController();
     _scrollController.addListener(_onScroll);
 
-    _fetchMessages().then((_) {
-      _fetchUserLikes();
+    _fetchMessages().then((_) async {
+      await _fetchUserLikes();
+      // Fetch initial like counts for all posts
+      for (var message in messages) {
+        final count = await _fetchLikesCount(message.id);
+        if (mounted) {
+          setState(() {
+            message.likesCount = count;
+          });
+        }
+      }
     });
   }
 
@@ -231,13 +240,17 @@ class _HomeScreenState extends State<HomeScreen> {
       final postIndex = messages.indexWhere((post) => post.id == postId);
       if (postIndex == -1) return;
 
-      // Toggle like state locally
-      // setState(() {
-      //   messages[postIndex].isLiked = !messages[postIndex].isLiked;
-      //   // messages[postIndex].likesCount += messages[postIndex].isLiked ? 1 : -1;
-      // });
+      // Store the previous state in case we need to revert
+      final previousLikeState = messages[postIndex].isLiked;
+      final previousCount = messages[postIndex].likesCount;
 
-      // Make API call
+      // Optimistically update UI immediately
+      setState(() {
+        messages[postIndex].isLiked = !previousLikeState;
+        messages[postIndex].likesCount += messages[postIndex].isLiked ? 1 : -1;
+      });
+
+      // Make API call in background
       final response = await http.post(
         Uri.parse('http://192.168.0.159:5000/api/like/postLike'),
         headers: {'Content-Type': 'application/json'},
@@ -247,17 +260,32 @@ class _HomeScreenState extends State<HomeScreen> {
         }),
       );
 
-      if (response.statusCode == 200 && mounted) {
-        final newCount = await _fetchLikesCount(postId);
-        if (mounted) {
-          setState(() {
-            messages[postIndex].isLiked = !messages[postIndex].isLiked;
-          });
-        }
+      // If the API call fails, revert to previous state
+      if (response.statusCode != 200 && mounted) {
+        setState(() {
+          messages[postIndex].isLiked = previousLikeState;
+          messages[postIndex].likesCount = previousCount;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Failed to update like. Please try again.')),
+        );
       }
     } catch (e) {
       print('Error in _postLike: $e');
+
+      // Revert optimistic update on error
       if (mounted) {
+        final postIndex = messages.indexWhere((post) => post.id == postId);
+        if (postIndex != -1) {
+          setState(() {
+            messages[postIndex].isLiked = !messages[postIndex].isLiked;
+            messages[postIndex].likesCount +=
+                messages[postIndex].isLiked ? 1 : -1;
+          });
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to update like: $e')),
         );
@@ -456,14 +484,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     itemCount: messages.length,
                     itemBuilder: (context, index) {
                       final post = messages[index];
-
-                      _fetchLikesCount(post.id).then((count) {
-                        if (mounted) {
-                          setState(() {
-                            post.likesCount = count;
-                          });
-                        }
-                      });
 
                       _fetchCommentCount(post.id).then((count) {
                         if (mounted) {
