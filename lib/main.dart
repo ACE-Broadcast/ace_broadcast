@@ -51,11 +51,6 @@ class MyApp extends StatelessWidget {
             sdkInt >= 31 &&
             !manufacturer.toLowerCase().contains('xiaomi');
 
-        // Log whether dynamic colors are available
-        debugPrint(
-          'Dynamic colors available: lightDynamic = $lightDynamic, darkDynamic = $darkDynamic',
-        );
-
         // Modify dynamic light scheme if available
         ColorScheme lightScheme = useDynamicColor && lightDynamic != null
             ? lightDynamic.harmonized().copyWith(
