@@ -16,7 +16,6 @@ class PostWidget extends StatefulWidget {
   final Function()? onComment;
   final Function()? onShare;
   final Function()? onSave;
-  
 
   const PostWidget({
     super.key,
@@ -165,12 +164,24 @@ class _PostWidgetState extends State<PostWidget> {
                 // TODO Implement the dynamic like button
                 // LikeButton(isLiked: widget.isLiked, onTap: toggleLike),
 
-                const SizedBox(
-                  width: 5,
-                ),
-
                 //Like Counter
-                Text(widget.likesCount.toString(), style: const TextStyle(color: Colors.grey)),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  transitionBuilder:
+                      (Widget child, Animation<double> animation) {
+                    return ScaleTransition(
+                      scale: animation,
+                      child: child,
+                    );
+                  },
+                  child: Text(
+                    widget.likesCount.toString(),
+                    key: ValueKey<int>(widget.likesCount),
+                    style: TextStyle(
+                      color: widget.isLiked ? Colors.red : Colors.grey,
+                    ),
+                  ),
+                ),
 
                 const SizedBox(
                   width: 8,
