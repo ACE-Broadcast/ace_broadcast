@@ -65,7 +65,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   await _auth.loginWithGoggle();
                               if (userCred != null && context.mounted) {
                                 final user = userCred.user;
-                                print("User Successfully logged in");
+                                debugPrint("User Successfully logged in");
                                 showToast('Login Successful!');
                                 Navigator.pushReplacement(
                                   context,

@@ -83,7 +83,7 @@ class _ProfilePageState extends State<ProfilePage> {
       }
     } catch (e) {
       // TODO: Handle error - show snackbar or toast
-      print('Error picking image: $e');
+      debugPrint('Error picking image: $e');
     }
   }
 

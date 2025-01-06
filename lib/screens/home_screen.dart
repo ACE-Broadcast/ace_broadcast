@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:post_ace/models/post.dart';
 import 'package:post_ace/screens/profile_page.dart';
 import '../widgets/post_widget.dart';
-import '../data/posts_data.dart';
+//import '../data/posts_data.dart';
 import '../screens/comments_screen.dart';
 import '../screens/notification_screen.dart';
 import 'package:intl/intl.dart';
@@ -53,7 +54,7 @@ class Message {
   });
 
   factory Message.fromJson(Map<String, dynamic> json) {
-    print('Raw JSON: $json');
+    debugPrint('Raw JSON: $json');
 
     List<String> extractImageUrls(dynamic imagesData) {
       if (imagesData is List) {
@@ -170,9 +171,7 @@ class _HomeScreenState extends State<HomeScreen>
     } catch (e) {
       debugPrint('Error fetching messages: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load messages: $e')),
-        );
+        showToast('Failed to load messages: $e');
       }
     }
   }
@@ -271,14 +270,11 @@ class _HomeScreenState extends State<HomeScreen>
           messages[postIndex].isLiked = previousLikeState;
           messages[postIndex].likesCount = previousCount;
         });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Failed to update like. Please try again.')),
+        showToast('Failed to update like. Please try again.'
         );
       }
     } catch (e) {
-      print('Error in _postLike: $e');
+      debugPrint('Error in _postLike: $e');
 
       // Revert optimistic update on error
       if (mounted) {
@@ -291,9 +287,7 @@ class _HomeScreenState extends State<HomeScreen>
           });
         }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update like: $e')),
-        );
+        showToast('Failed to update like: $e');
       }
     }
   }
@@ -311,7 +305,7 @@ class _HomeScreenState extends State<HomeScreen>
         });
       }
     } catch (e) {
-      print('Error picking files: $e');
+      debugPrint('Error picking files: $e');
     }
   }
 
@@ -350,43 +344,26 @@ class _HomeScreenState extends State<HomeScreen>
         });
         if (mounted) {
           await _fetchMessages();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Post created successfully!')),
-          );
+          showToast('Post created successfully!');
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        showToast('Error: $e');
       }
     }
-  }
+  }  
 
-  Future<void> _checkUserLikes() async {
-    try {
-      final response = await http.get(
-        Uri.parse(
-            'http://192.168.0.159:5000/api/like/user-likes/${widget.userName}'),
-      );
-
-      if (response.statusCode == 200 && mounted) {
-        final data = json.decode(response.body);
-        final List<String> userLikedPosts =
-            List<String>.from(data['likedPosts'] ?? []);
-
-        setState(() {
-          for (var message in messages) {
-            message.isLiked = userLikedPosts.contains(message.id);
-          }
-        });
-      }
-    } catch (e) {
-      debugPrint('Error checking user likes: $e');
+    void showToast(String message) {
+      Fluttertoast.showToast(
+          msg: message,
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+          textColor: Theme.of(context).colorScheme.onSurface,
+          fontSize: 16.0);
     }
-  }
-
+    
   @override
   Widget build(BuildContext context) {
     super.build(context);

@@ -3,7 +3,6 @@ import '../widgets/post_widget.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:post_ace/services/auth_service.dart';
 import '../models/post.dart';
-import '../services/auth_service.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
