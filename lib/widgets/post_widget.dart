@@ -112,9 +112,59 @@ class _PostWidgetState extends State<PostWidget> {
           if (widget.imageUrls != null && widget.imageUrls!.isNotEmpty) ...[
             const SizedBox(height: 8),
             if (widget.imageUrls!.length == 1)
-              Image.network(
-                widget.imageUrls![0],
-                fit: BoxFit.cover,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: GestureDetector(
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => Dialog(
+                        backgroundColor: Theme.of(context).colorScheme.surface,
+                        insetPadding: EdgeInsets.zero,
+                        child: Stack(
+                          children: [
+                            InteractiveViewer(
+                              child: Image.network(
+                                widget.imageUrls![0],
+                                fit: BoxFit.contain,
+                                width: double.infinity,
+                                height: double.infinity,
+                              ),
+                            ),
+                            Positioned(
+                              top: 40,
+                              right: 20,
+                              child: IconButton(
+                                icon: const Icon(
+                                  Icons.close,
+                                  color: Colors.white,
+                                  size: 30,
+                                ),
+                                onPressed: () => Navigator.pop(context),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: theme.colorScheme.outline,
+                        width: 0.5,
+                      ),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        widget.imageUrls![0],
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                ),
               )
             else
               SizedBox(
@@ -128,13 +178,90 @@ class _PostWidgetState extends State<PostWidget> {
                         left: index == 0 ? 16 : 8,
                         right: index == widget.imageUrls!.length - 1 ? 16 : 0,
                       ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          widget.imageUrls![index],
-                          height: 200,
-                          width: 200,
-                          fit: BoxFit.cover,
+                      child: GestureDetector(
+                        onTap: () {
+                          int currentPage = index;
+                          showDialog(
+                            context: context,
+                            builder: (context) => StatefulBuilder(
+                              builder: (context, setState) {
+                                return Dialog(
+                                  backgroundColor:
+                                      Theme.of(context).colorScheme.surface,
+                                  insetPadding: EdgeInsets.zero,
+                                  child: Stack(
+                                    children: [
+                                      PageView.builder(
+                                        controller:
+                                            PageController(initialPage: index),
+                                        onPageChanged: (pageIndex) {
+                                          setState(() {
+                                            currentPage = pageIndex;
+                                          });
+                                        },
+                                        itemCount: widget.imageUrls!.length,
+                                        itemBuilder: (context, pageIndex) {
+                                          return InteractiveViewer(
+                                            child: Image.network(
+                                              widget.imageUrls![pageIndex],
+                                              fit: BoxFit.contain,
+                                              width: double.infinity,
+                                              height: double.infinity,
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                      // Image counter indicator
+                                      Positioned(
+                                        top: 40,
+                                        left: 20,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 6,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black54,
+                                            borderRadius:
+                                                BorderRadius.circular(15),
+                                          ),
+                                          child: Text(
+                                            '${currentPage + 1}/${widget.imageUrls!.length}',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      Positioned(
+                                        top: 40,
+                                        right: 20,
+                                        child: IconButton(
+                                          icon: const Icon(
+                                            Icons.close,
+                                            color: Colors.white,
+                                            size: 30,
+                                          ),
+                                          onPressed: () =>
+                                              Navigator.pop(context),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          );
+                        },
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            widget.imageUrls![index],
+                            height: 200,
+                            width: 200,
+                            fit: BoxFit.cover,
+                          ),
                         ),
                       ),
                     );
