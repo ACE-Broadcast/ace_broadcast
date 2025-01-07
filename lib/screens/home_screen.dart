@@ -270,8 +270,7 @@ class _HomeScreenState extends State<HomeScreen>
           messages[postIndex].isLiked = previousLikeState;
           messages[postIndex].likesCount = previousCount;
         });
-        showToast('Failed to update like. Please try again.'
-        );
+        showToast('Failed to update like. Please try again.');
       }
     } catch (e) {
       debugPrint('Error in _postLike: $e');
@@ -352,18 +351,18 @@ class _HomeScreenState extends State<HomeScreen>
         showToast('Error: $e');
       }
     }
-  }  
+  }
 
-    void showToast(String message) {
-      Fluttertoast.showToast(
-          msg: message,
-          toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.BOTTOM,
-          backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
-          textColor: Theme.of(context).colorScheme.onSurface,
-          fontSize: 16.0);
-    }
-    
+  void showToast(String message) {
+    Fluttertoast.showToast(
+        msg: message,
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+        textColor: Theme.of(context).colorScheme.onSurface,
+        fontSize: 16.0);
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);

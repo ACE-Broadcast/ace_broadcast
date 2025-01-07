@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:post_ace/widgets/like_button.dart';
+import 'package:post_ace/widgets/saved_button.dart';
 
 class PostWidget extends StatefulWidget {
   final String adminName;
@@ -39,20 +40,13 @@ class PostWidget extends StatefulWidget {
 }
 
 class _PostWidgetState extends State<PostWidget> {
+  bool _isSaved = false;
+
   @override
   void initState() {
     super.initState();
-    //isLiked = widget.likes.contains(currentUserId);
+    _isSaved = widget.isSaved;
   }
-
-  // TODO Update the firebase for likes
-  // void toggleLike(){
-  //   setState(() {
-  //     widget.isLiked = !widget.isLiked;
-  //   });
-  // }
-
-  // TODO Access all the email/user id in the likes list and display the count in the variable likesCount
 
   @override
   Widget build(BuildContext context) {
@@ -94,12 +88,14 @@ class _PostWidgetState extends State<PostWidget> {
                 fontSize: 12,
               ),
             ),
-            trailing: IconButton(
-              icon: Icon(
-                widget.isSaved ? Icons.star : Icons.star_border,
-                color: widget.isSaved ? Colors.amber : Colors.grey,
-              ),
-              onPressed: widget.onSave,
+            trailing: SavedButton(
+              isSaved: _isSaved,
+              onTap: () {
+                setState(() {
+                  _isSaved = !_isSaved;
+                });
+                widget.onSave?.call();
+              },
             ),
           ),
 
@@ -161,8 +157,6 @@ class _PostWidgetState extends State<PostWidget> {
                   isLiked: widget.isLiked,
                   onTap: widget.onLike,
                 ),
-                // TODO Implement the dynamic like button
-                // LikeButton(isLiked: widget.isLiked, onTap: toggleLike),
 
                 //Like Counter
                 AnimatedSwitcher(
