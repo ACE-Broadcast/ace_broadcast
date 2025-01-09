@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'dart:io' show Platform;
 import 'package:post_ace/utils/theme.dart';
+import 'package:post_ace/widgets/connectivity_wrapper.dart';
 import 'screens/selection_screen.dart';
 import 'package:provider/provider.dart';
 import 'utils/theme_provider.dart';
@@ -87,7 +88,9 @@ class MyApp extends StatelessWidget {
               bodySmall: TextStyle(fontFamily: 'Lato'),
             ),
           ),
-          home: const SelectionScreen(),
+          home: ConnectivityWrapper (
+          child: const SelectionScreen(),
+          ),
         );
       },
     );

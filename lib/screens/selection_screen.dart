@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:post_ace/widgets/connectivity_wrapper.dart';
 import 'login_screen_admin.dart';
 import 'login_screen_student.dart';
 
@@ -30,7 +31,9 @@ class _SelectionScreenState extends State<SelectionScreen> {
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const LoginScreenStudent(),
+                    builder: (context) => ConnectivityWrapper(
+                      child: const LoginScreenStudent(),
+                    ),
                   ),
                 );
               },
@@ -91,7 +94,8 @@ class _SelectionScreenState extends State<SelectionScreen> {
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const LoginScreen(),
+                    builder: (context) =>
+                        ConnectivityWrapper(child: const LoginScreen()),
                   ),
                 );
               },

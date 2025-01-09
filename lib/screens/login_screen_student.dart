@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/connectivity_wrapper.dart';
 import 'home_screen.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -17,7 +18,6 @@ class _LoginScreenStudentState extends State<LoginScreenStudent> {
 
   @override
   Widget build(BuildContext context) {
-
     void showToast(String message) {
       Fluttertoast.showToast(
           msg: message,
@@ -68,7 +68,7 @@ class _LoginScreenStudentState extends State<LoginScreenStudent> {
                               final String? email = user?.email;
 
                               if (email != null &&
-                                  email.endsWith('@atharvacoe.ac.in')) { 
+                                  email.endsWith('@atharvacoe.ac.in')) {
                                 showToast('Login Successful!');
                                 Navigator.pushReplacement(
                                   context,
@@ -81,7 +81,8 @@ class _LoginScreenStudentState extends State<LoginScreenStudent> {
                                   ),
                                 );
                               } else {
-                                showToast('Please use your college email address');
+                                showToast(
+                                    'Please use your college email address');
                               }
                             }
                           } catch (e) {
@@ -111,10 +112,12 @@ class _LoginScreenStudentState extends State<LoginScreenStudent> {
                           Navigator.pushReplacement(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const HomeScreen(
-                                isAdmin: false,
-                                userName: 'Admin',
-                                profileUrl: '',
+                              builder: (context) => ConnectivityWrapper(
+                                child: const HomeScreen(
+                                  isAdmin: false,
+                                  userName: 'Admin',
+                                  profileUrl: '',
+                                ),
                               ),
                             ),
                           );
@@ -131,7 +134,6 @@ class _LoginScreenStudentState extends State<LoginScreenStudent> {
                       ),
                     ),
                     // Till Here
-
                   ],
                 ),
               ),

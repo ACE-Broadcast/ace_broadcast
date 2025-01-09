@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:post_ace/services/auth_service.dart';
+import '../widgets/connectivity_wrapper.dart';
 import 'home_screen.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -101,10 +102,12 @@ class _LoginScreenState extends State<LoginScreen> {
                               Navigator.pushReplacement(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => const HomeScreen(
-                                    isAdmin: true,
-                                    userName: 'Admin',
-                                    profileUrl: '',
+                                  builder: (context) => ConnectivityWrapper(
+                                    child: const HomeScreen(
+                                      isAdmin: true,
+                                      userName: 'Admin',
+                                      profileUrl: '',
+                                    ),
                                   ),
                                 ),
                               );
