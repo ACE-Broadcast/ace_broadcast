@@ -49,8 +49,9 @@ class MyApp extends StatelessWidget {
         final themeProvider = context.watch<ThemeProvider>();
         final useDynamicColor = Platform.isAndroid &&
             themeProvider.useDynamicColor &&
-            sdkInt >= 31 &&
-            !manufacturer.toLowerCase().contains('xiaomi');
+            (sdkInt >= 31 ||
+                (sdkInt == 31 &&
+                    !manufacturer.toLowerCase().contains('xiaomi')));
 
         // Modify dynamic light scheme if available
         ColorScheme lightScheme = useDynamicColor && lightDynamic != null
@@ -88,8 +89,8 @@ class MyApp extends StatelessWidget {
               bodySmall: TextStyle(fontFamily: 'Lato'),
             ),
           ),
-          home: ConnectivityWrapper (
-          child: const SelectionScreen(),
+          home: ConnectivityWrapper(
+            child: const SelectionScreen(),
           ),
         );
       },

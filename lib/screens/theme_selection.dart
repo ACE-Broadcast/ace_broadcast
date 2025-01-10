@@ -21,8 +21,9 @@ class _ThemeSelectionState extends State<ThemeSelection> {
     final theme = Theme.of(context);
 
     final canUseDynamicColor = Platform.isAndroid &&
-        MyApp.sdkInt >= 31 &&
-        !MyApp.manufacturer.toLowerCase().contains('xiaomi');
+        (MyApp.sdkInt >= 31 ||
+            (MyApp.sdkInt == 31 &&
+                !MyApp.manufacturer.toLowerCase().contains('xiaomi')));
 
     return Scaffold(
       appBar: AppBar(

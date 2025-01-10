@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:post_ace/models/post.dart';
 import 'package:post_ace/screens/profile_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/post_widget.dart';
 //import '../data/posts_data.dart';
 import '../screens/comments_screen.dart';
@@ -14,6 +16,7 @@ import 'package:post_ace/widgets/bottom_navbar.dart';
 import 'package:file_picker/file_picker.dart';
 import '../widgets/keep_alive_wrapper.dart';
 import '../widgets/connectivity_wrapper.dart';
+import 'dart:async';
 
 class HomeScreen extends StatefulWidget {
   final bool isAdmin;
@@ -92,6 +95,20 @@ class Message {
     final formatter = DateFormat('MMM dd, yyyy hh:mm a');
     return formatter.format(timestamp);
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'username': username,
+      'message': message,
+      'timestamp': timestamp.toIso8601String(),
+      'id': id,
+      'imageUrls': imageUrls,
+      'likesCount': likesCount,
+      'commentsCount': commentsCount,
+      'isLiked': isLiked,
+      'userLikes': userLikes,
+    };
+  }
 }
 
 class _HomeScreenState extends State<HomeScreen>
@@ -103,8 +120,9 @@ class _HomeScreenState extends State<HomeScreen>
   bool get wantKeepAlive => true;
 
   final ScrollController _scrollController = ScrollController();
+  final ScrollController _mainScrollController = ScrollController();
   TextEditingController _messageController = TextEditingController();
-  double _titleSize = 30;
+  double _titleSize = 40.0;
   int _selectedIndex = 0;
   final PageController _pageController = PageController();
   List<PlatformFile>? _selectedFiles;
@@ -112,11 +130,18 @@ class _HomeScreenState extends State<HomeScreen>
 
   List<Message> messages = [];
 
+  bool _isLoadingMore = false;
+  int _currentPage = 1;
+  final int _postsPerPage = 10;
+  bool _hasMorePosts = true;
+
+  Timer? _debounce;
+
   @override
   void initState() {
     super.initState();
     _messageController = TextEditingController();
-    _scrollController.addListener(_onScroll);
+    _mainScrollController.addListener(_handleScroll);
     _focusNode.addListener(() {
       setState(() {});
     });
@@ -140,18 +165,31 @@ class _HomeScreenState extends State<HomeScreen>
     _focusNode.dispose();
     _messageController.dispose();
     _scrollController.dispose();
+    _mainScrollController.dispose();
     _pageController.dispose();
     super.dispose();
   }
 
-  void _onScroll() {
-    final offset = _scrollController.offset;
+  void _handleScroll() {
+    if (!_mainScrollController.hasClients) return;
+
+    final offset = _mainScrollController.offset;
     const maxSize = 40.0;
     const minSize = 24.0;
+    const scrollThreshold = 100.0;
 
     setState(() {
-      _titleSize = (maxSize - (offset / 30)).clamp(minSize, maxSize);
+      _titleSize = maxSize - ((offset / scrollThreshold) * (maxSize - minSize));
+      _titleSize = _titleSize.clamp(minSize, maxSize);
     });
+
+    if (_mainScrollController.position.pixels >=
+        _mainScrollController.position.maxScrollExtent * 0.8) {
+      if (!_isLoadingMore && _hasMorePosts) {
+        _currentPage++;
+        _fetchMessages();
+      }
+    }
   }
 
   void _onNavigationChanged(int index) {
@@ -161,24 +199,46 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _fetchMessages() async {
-    if (!mounted) return;
+    if (!mounted || _isLoadingMore || !_hasMorePosts) return;
 
     setState(() {
-      _isLoading = true;
+      if (_currentPage == 1) {
+        _isLoading = true;
+        // Load cached posts only on first page
+        _loadCachedPosts().then((cachedPosts) {
+          if (cachedPosts.isNotEmpty && mounted) {
+            setState(() {
+              messages = cachedPosts;
+              _isLoading = false;
+            });
+          }
+        });
+      } else {
+        _isLoadingMore = true;
+      }
     });
 
     try {
-      await Future.delayed(const Duration(seconds: 2));
       final response = await http.get(
-        Uri.parse('http://192.168.0.159:5000/api/post/getMsg'),
+        Uri.parse(
+            'http://192.168.0.159:5000/api/post/getMsg?page=$_currentPage&limit=$_postsPerPage'),
       );
 
       if (response.statusCode == 200 && mounted) {
         final data = json.decode(response.body);
         final List<dynamic> messagesData = data['data'] ?? [];
+        final newMessages =
+            messagesData.map((json) => Message.fromJson(json)).toList();
+
         setState(() {
-          messages =
-              messagesData.map((json) => Message.fromJson(json)).toList();
+          if (_currentPage == 1) {
+            messages = newMessages;
+            // Cache only on first page load
+            _cachePosts(messages);
+          } else {
+            messages.addAll(newMessages);
+          }
+          _hasMorePosts = newMessages.length >= _postsPerPage;
         });
       }
     } catch (e) {
@@ -190,6 +250,7 @@ class _HomeScreenState extends State<HomeScreen>
       if (mounted) {
         setState(() {
           _isLoading = false;
+          _isLoadingMore = false;
         });
       }
     }
@@ -386,6 +447,30 @@ class _HomeScreenState extends State<HomeScreen>
         fontSize: 16.0);
   }
 
+  Future<void> _cachePosts(List<Message> posts) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final postsJson = posts.map((post) => jsonEncode(post.toJson())).toList();
+      await prefs.setStringList('cached_posts', postsJson);
+    } catch (e) {
+      debugPrint('Error caching posts: $e');
+    }
+  }
+
+  Future<List<Message>> _loadCachedPosts() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final postsJson = prefs.getStringList('cached_posts') ?? [];
+      return postsJson.map((postJson) {
+        final Map<String, dynamic> decoded = jsonDecode(postJson);
+        return Message.fromJson(decoded);
+      }).toList();
+    } catch (e) {
+      debugPrint('Error loading cached posts: $e');
+      return [];
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -433,29 +518,26 @@ class _HomeScreenState extends State<HomeScreen>
                     KeepAliveWrapper(
                       child: Scaffold(
                         appBar: AppBar(
-                          surfaceTintColor: Colors.transparent,
-                          foregroundColor: Colors.transparent,
-                          backgroundColor: Colors.transparent,
+                          surfaceTintColor: theme.colorScheme.surface,
+                          backgroundColor: theme.colorScheme.surface,
                           elevation: 0,
                           title: AnimatedDefaultTextStyle(
-                            duration: const Duration(milliseconds: 200),
+                            duration: const Duration(milliseconds: 100),
+                            curve: Curves.easeOutCubic,
                             style: TextStyle(
                               fontSize: _titleSize,
                               fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.primary,
                             ),
-                            child: Text(
+                            child: const Text(
                               'Home',
-                              style: TextStyle(
-                                color: theme.colorScheme.primary,
-                                fontWeight: FontWeight.w700,
-                              ),
                             ),
                           ),
                         ),
                         body: Column(
                           children: [
                             ScrollToHideWidget(
-                              controller: _scrollController,
+                              controller: _mainScrollController,
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 16.0, vertical: 8.0),
@@ -523,87 +605,125 @@ class _HomeScreenState extends State<HomeScreen>
                                               horizontal: 20, vertical: 16),
                                     ),
                                     onChanged: (value) {
-                                      // TODO: Implement Firestore search query
+                                      if (_debounce?.isActive ?? false)
+                                        _debounce!.cancel();
+                                      _debounce = Timer(
+                                          const Duration(milliseconds: 500),
+                                          () {
+                                        // Implement search logic here
+                                      });
                                     },
                                   ),
                                 ),
                               ),
                             ),
                             Expanded(
-                              child: ListView.builder(
-                                controller: _scrollController,
-                                itemCount: messages.length,
-                                itemBuilder: (context, index) {
-                                  final post = messages[index];
-
-                                  _fetchCommentCount(post.id).then((count) {
-                                    if (mounted) {
-                                      setState(() {
-                                        post.commentsCount = count;
-                                      });
-                                    }
-                                  });
-
-                                  return InkWell(
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => CommentsScreen(
-                                            post: Post(
-                                                id: post.id,
-                                                adminName: post.username,
-                                                timeAgo: _formatTimestamp(
-                                                    post.timestamp.toString()),
-                                                content: post.message,
-                                                imageUrls:
-                                                    post.imageUrls.isEmpty
-                                                        ? []
-                                                        : post.imageUrls,
-                                                likesCount: post.likesCount,
-                                                commentsCount:
-                                                    post.commentsCount,
-                                                isSaved: post.username ==
-                                                    widget.userName),
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    child: PostWidget(
-                                      adminName: post.username,
-                                      timeAgo: _formatTimestamp(
-                                          post.timestamp.toString()),
-                                      content: post.message,
-                                      imageUrls: post.imageUrls.isEmpty
-                                          ? []
-                                          : post.imageUrls,
-                                      likesCount: post.likesCount,
-                                      likes: const [],
-                                      commentsCount: post.commentsCount,
-                                      isLiked: post.isLiked,
-                                      isSaved: post.username == widget.userName,
-                                      onLike: () async {
-                                        await _postLike(post.id);
-                                      },
-                                      // onComment: () {
-                                      //   Navigator.push(
-                                      //     context,
-                                      //     MaterialPageRoute(
-                                      //       builder: (context) =>
-                                      //           CommentsScreen(post: post),
-                                      //     ),
-                                      //   );
-                                      // },
-                                      onShare: () {
-                                        // TODO: Implement share functionality
-                                      },
-                                      onSave: () {
-                                        // TODO: Implement Firebase save functionality
-                                      },
-                                      // isLiked: post.isLiked,
-                                    ),
-                                  );
+                              child: RefreshIndicator(
+                                onRefresh: () async {
+                                  HapticFeedback.mediumImpact();
+                                  _currentPage = 1;
+                                  _hasMorePosts = true;
+                                  await _fetchMessages();
                                 },
+                                child: ListView.builder(
+                                  controller: _mainScrollController,
+                                  itemCount:
+                                      messages.length + (_hasMorePosts ? 1 : 0),
+                                  itemBuilder: (context, index) {
+                                    if (index == messages.length) {
+                                      // Show loading indicator at the bottom
+                                      return _hasMorePosts
+                                          ? Padding(
+                                              padding:
+                                                  const EdgeInsets.all(16.0),
+                                              child: Center(
+                                                child:
+                                                    CircularProgressIndicator(
+                                                  valueColor:
+                                                      AlwaysStoppedAnimation<
+                                                          Color>(
+                                                    theme.colorScheme.primary,
+                                                  ),
+                                                ),
+                                              ),
+                                            )
+                                          : const SizedBox.shrink();
+                                    }
+
+                                    final post = messages[index];
+
+                                    _fetchCommentCount(post.id).then((count) {
+                                      if (mounted) {
+                                        setState(() {
+                                          post.commentsCount = count;
+                                        });
+                                      }
+                                    });
+
+                                    return InkWell(
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                CommentsScreen(
+                                              post: Post(
+                                                  id: post.id,
+                                                  adminName: post.username,
+                                                  timeAgo: _formatTimestamp(post
+                                                      .timestamp
+                                                      .toString()),
+                                                  content: post.message,
+                                                  imageUrls:
+                                                      post.imageUrls.isEmpty
+                                                          ? []
+                                                          : post.imageUrls,
+                                                  likesCount: post.likesCount,
+                                                  commentsCount:
+                                                      post.commentsCount,
+                                                  isSaved: post.username ==
+                                                      widget.userName),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      child: PostWidget(
+                                        adminName: post.username,
+                                        timeAgo: _formatTimestamp(
+                                            post.timestamp.toString()),
+                                        content: post.message,
+                                        imageUrls: post.imageUrls.isEmpty
+                                            ? []
+                                            : post.imageUrls,
+                                        likesCount: post.likesCount,
+                                        likes: const [],
+                                        commentsCount: post.commentsCount,
+                                        isLiked: post.isLiked,
+                                        isSaved:
+                                            post.username == widget.userName,
+                                        onLike: () async {
+                                          await _postLike(post.id);
+                                        },
+                                        // onComment: () {
+                                        //   Navigator.push(
+                                        //     context,
+                                        //     MaterialPageRoute(
+                                        //       builder: (context) =>
+                                        //           CommentsScreen(post: post),
+                                        //     ),
+                                        //   );
+                                        // },
+                                        onShare: () {
+                                          // TODO: Implement share functionality
+                                        },
+                                        onSave: () {
+                                          // TODO: Implement Firebase save functionality
+                                        },
+                                        // isLiked: post.isLiked,
+                                      ),
+                                    );
+                                  },
+                                ),
                               ),
                             ),
                           ],

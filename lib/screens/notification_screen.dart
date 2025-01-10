@@ -29,9 +29,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        surfaceTintColor: Colors.transparent,
-        foregroundColor: Colors.transparent,
-        backgroundColor: Colors.transparent,
+        surfaceTintColor: theme.colorScheme.surface,
+        backgroundColor: theme.colorScheme.surface,
         title: AnimatedDefaultTextStyle(
           duration: const Duration(milliseconds: 200),
           style: TextStyle(
