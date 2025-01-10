@@ -96,6 +96,7 @@ class Message {
 
 class _HomeScreenState extends State<HomeScreen>
     with AutomaticKeepAliveClientMixin {
+  final FocusNode _focusNode = FocusNode();
   bool _isLoading = true;
 
   @override
@@ -116,6 +117,9 @@ class _HomeScreenState extends State<HomeScreen>
     super.initState();
     _messageController = TextEditingController();
     _scrollController.addListener(_onScroll);
+    _focusNode.addListener(() {
+      setState(() {});
+    });
 
     _fetchMessages().then((_) async {
       await _fetchUserLikes();
@@ -133,6 +137,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   void dispose() {
+    _focusNode.dispose();
     _messageController.dispose();
     _scrollController.dispose();
     _pageController.dispose();
@@ -314,7 +319,11 @@ class _HomeScreenState extends State<HomeScreen>
 
       if (result != null) {
         setState(() {
-          _selectedFiles = result.files;
+          if (_selectedFiles != null) {
+            _selectedFiles = [..._selectedFiles!, ...result.files];
+          } else {
+            _selectedFiles = result.files;
+          }
         });
       }
     } catch (e) {
@@ -672,56 +681,251 @@ class _HomeScreenState extends State<HomeScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: theme.colorScheme.inversePrimary,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-          left: 16,
-          right: 16,
-          top: 16,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'Create New Post',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => DraggableScrollableSheet(
+          initialChildSize: 0.8,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (context, scrollController) => Container(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(20)),
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  theme.colorScheme.surface,
+                  theme.colorScheme.surfaceContainerHighest,
+                ],
               ),
             ),
-            const SizedBox(height: 16),
-            TextField(
-              maxLines: 4,
-              controller: _messageController,
-              decoration: const InputDecoration(
-                hintText: 'What would you like to announce?',
-                border: OutlineInputBorder(),
-              ),
+            child: Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    controller: scrollController,
+                    child: Padding(
+                      padding: const EdgeInsets.only(
+                        left: 16,
+                        right: 16,
+                        top: 16,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Drag handle
+                          Center(
+                            child: Container(
+                              width: 40,
+                              height: 4,
+                              margin: const EdgeInsets.only(bottom: 16),
+                              decoration: BoxDecoration(
+                                color:
+                                    theme.colorScheme.outline.withOpacity(0.4),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                          ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Create New Post',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.close),
+                                onPressed: () => Navigator.pop(context),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+                          SizedBox(
+                            height: 200,
+                            child: TextField(
+                              focusNode: _focusNode,
+                              maxLines: null,
+                              controller: _messageController,
+                              decoration: InputDecoration(
+                                hintText: 'What would you like to announce?',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                contentPadding: const EdgeInsets.all(16),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          if (_selectedFiles?.isNotEmpty ?? false) ...[
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Selected Images',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                    color: theme.colorScheme.onSurface,
+                                  ),
+                                ),
+                                TextButton.icon(
+                                  onPressed: () async {
+                                    await pickFiles();
+                                    setState(() {});
+                                  },
+                                  icon: const Icon(Icons.add_photo_alternate,
+                                      size: 20),
+                                  label: const Text('Add More'),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              height: 100,
+                              margin: const EdgeInsets.only(bottom: 16),
+                              child: ListView.builder(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: _selectedFiles?.length ?? 0,
+                                itemBuilder: (context, index) {
+                                  return Stack(
+                                    children: [
+                                      Container(
+                                        width: 100,
+                                        margin: const EdgeInsets.only(right: 8),
+                                        decoration: BoxDecoration(
+                                          border: Border.all(
+                                              color: theme.colorScheme.outline),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: Center(
+                                          child: Text('Image ${index + 1}'),
+                                        ),
+                                      ),
+                                      Positioned(
+                                        top: -8,
+                                        right: 0,
+                                        child: IconButton(
+                                          icon: Container(
+                                            padding: const EdgeInsets.all(2),
+                                            decoration: BoxDecoration(
+                                              color: theme.colorScheme.error,
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Icon(
+                                              Icons.close,
+                                              size: 16,
+                                              color: theme.colorScheme.onError,
+                                            ),
+                                          ),
+                                          onPressed: () {
+                                            setState(() {
+                                              _selectedFiles?.removeAt(index);
+                                              if (_selectedFiles?.isEmpty ??
+                                                  false) {
+                                                _selectedFiles = null;
+                                              }
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // Fixed bottom buttons
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child: MediaQuery.of(context).viewInsets.bottom == 0
+                      ? Container(
+                          padding: EdgeInsets.only(
+                            left: 16,
+                            right: 16,
+                            bottom:
+                                MediaQuery.of(context).viewInsets.bottom + 16,
+                            top: 16,
+                          ),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surface,
+                            border: Border(
+                              top: BorderSide(
+                                color: theme.colorScheme.outline
+                                    .withValues(alpha: .2),
+                              ),
+                            ),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 20),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 56,
+                                  child: OutlinedButton.icon(
+                                    onPressed: () async {
+                                      await pickFiles();
+                                      setState(() {});
+                                    },
+                                    icon: const Icon(Icons.image, size: 24),
+                                    label: Text(
+                                      (_selectedFiles?.length ?? 0) > 0
+                                          ? '${_selectedFiles!.length} files selected'
+                                          : 'Add Images',
+                                      style: const TextStyle(fontSize: 16),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 56,
+                                  child: ElevatedButton(
+                                    onPressed: () {
+                                      postMessage();
+                                      Navigator.pop(context);
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor:
+                                          theme.colorScheme.primary,
+                                      foregroundColor:
+                                          theme.colorScheme.onPrimary,
+                                    ),
+                                    child: const Text(
+                                      'Post',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: pickFiles,
-              icon: const Icon(Icons.image),
-              label: Text((_selectedFiles?.length ?? 0) > 0
-                  ? '${_selectedFiles!.length} files selected'
-                  : 'Add Images'),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: postMessage,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: theme.colorScheme.primary,
-                foregroundColor: theme.colorScheme.inversePrimary,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-              child: const Text('Post'),
-            ),
-            const SizedBox(height: 16),
-          ],
+          ),
         ),
       ),
     );
