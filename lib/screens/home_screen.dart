@@ -626,6 +626,7 @@ class _HomeScreenState extends State<HomeScreen>
                                   await _fetchMessages();
                                 },
                                 child: ListView.builder(
+                                  physics: BouncingScrollPhysics(),
                                   controller: _mainScrollController,
                                   itemCount:
                                       messages.length + (_hasMorePosts ? 1 : 0),
@@ -914,6 +915,7 @@ class _HomeScreenState extends State<HomeScreen>
                               height: 100,
                               margin: const EdgeInsets.only(bottom: 16),
                               child: ListView.builder(
+                                physics: BouncingScrollPhysics(),
                                 scrollDirection: Axis.horizontal,
                                 itemCount: _selectedFiles?.length ?? 0,
                                 itemBuilder: (context, index) {
