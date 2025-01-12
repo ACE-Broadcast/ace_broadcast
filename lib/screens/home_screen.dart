@@ -16,6 +16,7 @@ import 'package:post_ace/widgets/bottom_navbar.dart';
 import 'package:file_picker/file_picker.dart';
 import '../widgets/keep_alive_wrapper.dart';
 import '../widgets/connectivity_wrapper.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'dart:async';
 
 class HomeScreen extends StatefulWidget {
@@ -134,7 +135,7 @@ class _HomeScreenState extends State<HomeScreen>
   int _currentPage = 1;
   final int _postsPerPage = 10;
   bool _hasMorePosts = true;
-
+  bool _isRefreshing = false;
   Timer? _debounce;
 
   @override
@@ -618,12 +619,38 @@ class _HomeScreenState extends State<HomeScreen>
                               ),
                             ),
                             Expanded(
+                              //Refresh Indicator
                               child: RefreshIndicator(
                                 onRefresh: () async {
-                                  HapticFeedback.mediumImpact();
-                                  _currentPage = 1;
-                                  _hasMorePosts = true;
-                                  await _fetchMessages();
+                                  var connectivityResult =
+                                      await Connectivity().checkConnectivity();
+                                  if (connectivityResult
+                                      .contains(ConnectivityResult.none)) {
+                                    if (mounted) {
+                                      showToast('No internet connection');
+                                    }
+                                    return;
+                                  }
+                                  if (_isRefreshing) return;
+                                  try {
+                                    setState(() => _isRefreshing = true);
+                                    HapticFeedback.mediumImpact();
+                                    setState(() {
+                                      _currentPage = 1;
+                                      _hasMorePosts = true;
+                                    });
+                                    await _fetchMessages();
+                                  } catch (e) {
+                                    if (mounted) {
+                                      showToast(
+                                          'Failed to refresh: Please try again');
+                                    }
+                                    rethrow;
+                                  } finally {
+                                    if (mounted) {
+                                      setState(() => _isRefreshing = false);
+                                    }
+                                  }
                                 },
                                 child: ListView.builder(
                                   physics: BouncingScrollPhysics(),
@@ -848,8 +875,8 @@ class _HomeScreenState extends State<HomeScreen>
                               height: 4,
                               margin: const EdgeInsets.only(bottom: 16),
                               decoration: BoxDecoration(
-                                color:
-                                    theme.colorScheme.outline.withOpacity(0.4),
+                                color: theme.colorScheme.outline
+                                    .withValues(alpha: 0.4),
                                 borderRadius: BorderRadius.circular(2),
                               ),
                             ),
