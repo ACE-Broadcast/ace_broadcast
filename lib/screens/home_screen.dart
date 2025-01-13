@@ -472,21 +472,39 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  Future<bool> _checkForCachedPosts() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedPosts = prefs.getStringList('cached_posts') ?? [];
+      return cachedPosts.isNotEmpty;
+    } catch (e) {
+      debugPrint('Error checking cached posts: $e');
+      return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
     final theme = Theme.of(context);
     return ConnectivityWrapper(
+      checkForCachedData: _checkForCachedPosts,
+      
+      // Load Cached Data
+      loadCachedData: () async {
+        final cachedPosts = await _loadCachedPosts();
+        setState(() {
+          messages = cachedPosts; // Update the state with cached posts
+        });
+      },
+
+      //Fetch Posts when connection is restored
       onConnectionRestored: () async {
-        // First fetch the messages
         await _fetchMessages();
 
-        // Then fetch likes and comments for each post
         for (var message in messages) {
           if (mounted) {
-            // Fetch likes count
             final likesCount = await _fetchLikesCount(message.id);
-            // Fetch comments count
             final commentsCount = await _fetchCommentCount(message.id);
 
             setState(() {
@@ -496,7 +514,6 @@ class _HomeScreenState extends State<HomeScreen>
           }
         }
 
-        // Fetch user likes to update which posts are liked by the current user
         await _fetchUserLikes();
       },
       child: Scaffold(
