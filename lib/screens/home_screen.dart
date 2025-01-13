@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -205,15 +206,6 @@ class _HomeScreenState extends State<HomeScreen>
     setState(() {
       if (_currentPage == 1) {
         _isLoading = true;
-        // Load cached posts only on first page
-        _loadCachedPosts().then((cachedPosts) {
-          if (cachedPosts.isNotEmpty && mounted) {
-            setState(() {
-              messages = cachedPosts;
-              _isLoading = false;
-            });
-          }
-        });
       } else {
         _isLoadingMore = true;
       }
@@ -234,8 +226,12 @@ class _HomeScreenState extends State<HomeScreen>
         setState(() {
           if (_currentPage == 1) {
             messages = newMessages;
-            // Cache only on first page load
-            _cachePosts(messages);
+            // Cache only on first page load and ensure we have data
+            if (newMessages.isNotEmpty) {
+              _cachePosts(newMessages).then((_) {
+                debugPrint('Posts cached successfully');
+              });
+            }
           } else {
             messages.addAll(newMessages);
           }
@@ -245,7 +241,8 @@ class _HomeScreenState extends State<HomeScreen>
     } catch (e) {
       debugPrint('Error fetching messages: $e');
       if (mounted) {
-        showToast('Failed to load messages: $e');
+        showToast('Failed to load messages');
+        showToastDebug('Failed to load messages: $e');
       }
     } finally {
       if (mounted) {
@@ -366,8 +363,8 @@ class _HomeScreenState extends State<HomeScreen>
                 messages[postIndex].isLiked ? 1 : -1;
           });
         }
-
-        showToast('Failed to update like: $e');
+        showToast('An Error Occurred!');
+        showToastDebug('Failed to update like: $e');
       }
     }
   }
@@ -433,7 +430,8 @@ class _HomeScreenState extends State<HomeScreen>
       }
     } catch (e) {
       if (mounted) {
-        showToast('Error: $e');
+        showToast('An Error Occurred!');
+        showToastDebug('Error: $e');
       }
     }
   }
@@ -448,11 +446,29 @@ class _HomeScreenState extends State<HomeScreen>
         fontSize: 16.0);
   }
 
+  void showToastDebug(String message) {
+    if (kDebugMode == true) {
+      Fluttertoast.showToast(
+          msg: message,
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.redAccent,
+          textColor: Colors.white,
+          fontSize: 16.0);
+    }
+  }
+
   Future<void> _cachePosts(List<Message> posts) async {
     try {
+      if (posts.isEmpty) {
+        debugPrint('No posts to cache');
+        return;
+      }
+
       final prefs = await SharedPreferences.getInstance();
       final postsJson = posts.map((post) => jsonEncode(post.toJson())).toList();
       await prefs.setStringList('cached_posts', postsJson);
+      debugPrint('Successfully cached ${posts.length} posts');
     } catch (e) {
       debugPrint('Error caching posts: $e');
     }
@@ -472,32 +488,36 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  Future<bool> _checkForCachedPosts() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedPosts = prefs.getStringList('cached_posts');
+      debugPrint('Cached posts found: ${cachedPosts?.isNotEmpty}');
+      return cachedPosts?.isNotEmpty ?? false;
+    } catch (e) {
+      debugPrint('Error checking cached posts: $e');
+      return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
     final theme = Theme.of(context);
     return ConnectivityWrapper(
-      onConnectionRestored: () async {
-        // First fetch the messages
-        await _fetchMessages();
-
-        // Then fetch likes and comments for each post
-        for (var message in messages) {
-          if (mounted) {
-            // Fetch likes count
-            final likesCount = await _fetchLikesCount(message.id);
-            // Fetch comments count
-            final commentsCount = await _fetchCommentCount(message.id);
-
-            setState(() {
-              message.likesCount = likesCount;
-              message.commentsCount = commentsCount;
-            });
-          }
+      checkForCachedData: _checkForCachedPosts,
+      loadCachedData: () async {
+        final cachedPosts = await _loadCachedPosts();
+        if (mounted && cachedPosts.isNotEmpty) {
+          setState(() {
+            messages = cachedPosts;
+            _isLoading = false;
+          });
         }
-
-        // Fetch user likes to update which posts are liked by the current user
-        await _fetchUserLikes();
+      },
+      onConnectionRestored: () async {
+        await _fetchMessages();
+        // ... rest of your connection restored logic
       },
       child: Scaffold(
           body: _isLoading
